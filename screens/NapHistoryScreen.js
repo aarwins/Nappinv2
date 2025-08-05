@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   Image,
   Modal,
+  Alert,
 } from 'react-native';
 import Svg, { Path, G, Defs, ClipPath, Rect } from 'react-native-svg';
 import napDataManager from '../utils/napDataManager';
@@ -145,18 +146,34 @@ const NapHistoryScreen = ({ navigation }) => {
     toggleExpand(napId);
   };
 
-  const handleDeleteNap = async (napId) => {
-    try {
-      const success = await napDataManager.deleteNap(napId);
-      if (success) {
-        // Reload the data to show updated list
-        await loadNapData();
-        await loadAvailableMonths();
-        console.log('Nap deleted successfully');
-      }
-    } catch (error) {
-      console.error('Failed to delete nap:', error);
-    }
+  const handleDeleteNap = (napId) => {
+    Alert.alert(
+      'Delete Nap',
+      'Are you sure you want to delete this nap? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const success = await napDataManager.deleteNap(napId);
+              if (success) {
+                // Reload the data to show updated list
+                await loadNapData();
+                await loadAvailableMonths();
+                console.log('Nap deleted successfully');
+              }
+            } catch (error) {
+              console.error('Failed to delete nap:', error);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const BackArrowIcon = () => (
@@ -401,7 +418,7 @@ const NapHistoryScreen = ({ navigation }) => {
             <Text style={styles.navText}>Features</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.navButton}>
+          <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('Profile')}>
             <ProfileIcon />
             <Text style={styles.navText}>Profile</Text>
           </TouchableOpacity>

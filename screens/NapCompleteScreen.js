@@ -244,7 +244,9 @@ export default function NapCompleteScreen({ navigation, route }) {
 
   const handleProfilePress = () => {
     console.log('Profile tab pressed');
-    // TODO: Navigate to profile screen
+    if (navigation) {
+      navigation.navigate('Profile');
+    }
   };
 
   return (

@@ -170,7 +170,9 @@ export default function FeaturesScreen({ navigation }) {
 
   const handleProfilePress = () => {
     console.log('Profile tab pressed');
-    // TODO: Navigate to profile screen when implemented
+    if (navigation) {
+      navigation.navigate('Profile');
+    }
   };
 
   return (
@@ -210,14 +212,22 @@ export default function FeaturesScreen({ navigation }) {
 
           {/* Second Row */}
           <View style={styles.gridRow}>
-            <TouchableOpacity style={styles.featureCard} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.featureCard}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('NapScheduler')}
+            >
               <View style={styles.iconContainer}>
                 <SchedulerIcon />
               </View>
               <Text style={styles.featureLabel}>Nap Scheduler</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.featureCard} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.featureCard}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('Journal')}
+            >
               <View style={styles.iconContainer}>
                 <JournalIcon />
               </View>
@@ -227,14 +237,22 @@ export default function FeaturesScreen({ navigation }) {
 
           {/* Third Row */}
           <View style={styles.gridRow}>
-            <TouchableOpacity style={styles.featureCard} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.featureCard}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('FocusExercise')}
+            >
               <View style={styles.iconContainer}>
                 <FocusIcon />
               </View>
               <Text style={styles.featureLabel}>Focus Exercise</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.featureCard} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.featureCard}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('DailyNapPlanner')}
+            >
               <View style={styles.iconContainer}>
                 <PlannerIcon />
               </View>

@@ -17,6 +17,7 @@ import * as Notifications from 'expo-notifications';
 import { Svg, Path, G, Defs, ClipPath } from 'react-native-svg';
 import OptimizedImage from '../components/OptimizedImage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { usePersonalization } from '../components/PersonalizationProvider';
 
 // Configure notification behavior
 Notifications.setNotificationHandler({
@@ -120,6 +121,8 @@ const DropdownCard = ({ title, value, description, onPress }) => (
 export default function FinalizeNapScreen({ navigation, route }) {
   // Get selected time from home screen, default to 20
   const selectedTimeFromHome = route?.params?.selectedTime || '20';
+  const { setTomorrowReminder, clearTomorrowReminder } = usePersonalization();
+  
   const [napLength, setNapLength] = useState(`${selectedTimeFromHome} min`);
   const [selectedNapTime, setSelectedNapTime] = useState(selectedTimeFromHome);
   const [selectedWakeSound, setSelectedWakeSound] = useState('Soft Chime');
@@ -285,7 +288,12 @@ export default function FinalizeNapScreen({ navigation, route }) {
   // Nap length selection handlers
   const selectNapTime = (time) => {
     setSelectedNapTime(time);
-    setNapLength(`${time} min`);
+    // Special handling for dev 1-minute option
+    if (time === '1') {
+      setNapLength('1 min (DEV)');
+    } else {
+      setNapLength(`${time} min`);
+    }
     setShowNapLengthModal(false);
   };
 
@@ -453,6 +461,18 @@ export default function FinalizeNapScreen({ navigation, route }) {
     const notificationId = await scheduleNapReminder();
     
     if (notificationId) {
+      // Save reminder data to PersonalizationProvider
+      const reminderData = {
+        id: `tomorrow_${Date.now()}`,
+        time: timeString,
+        duration: napLength,
+        date: 'tomorrow',
+        notificationId: notificationId,
+        createdAt: new Date().toISOString()
+      };
+      
+      setTomorrowReminder(reminderData);
+      
       Alert.alert(
         'Reminder Set! 🔔', 
         `You'll receive a notification to nap at ${timeString} tomorrow.`,
@@ -467,6 +487,8 @@ export default function FinalizeNapScreen({ navigation, route }) {
           }
         ]
       );
+      
+      console.log('Saved tomorrow reminder data:', reminderData);
     }
   };
 
@@ -491,7 +513,9 @@ export default function FinalizeNapScreen({ navigation, route }) {
 
   const handleProfilePress = () => {
     console.log('Profile tab pressed');
-    // TODO: Navigate to profile screen
+    if (navigation) {
+      navigation.navigate('Profile');
+    }
   };
 
   const handleStartNap = () => {
@@ -629,6 +653,13 @@ export default function FinalizeNapScreen({ navigation, route }) {
           onPress={() => setShowNapLengthModal(false)}
         >
           <View style={styles.dropdownContainer}>
+            <TouchableOpacity
+              style={[styles.dropdownOption, styles.devOption]}
+              onPress={() => selectNapTime('1')}
+            >
+              <Text style={[styles.dropdownOptionText, styles.devOptionText]}>1 min (DEV)</Text>
+            </TouchableOpacity>
+            <View style={styles.dropdownSeparator} />
             <TouchableOpacity
               style={styles.dropdownOption}
               onPress={() => selectNapTime('10')}
@@ -1161,6 +1192,13 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#E5E8EC',
     marginHorizontal: 12,
+  },
+  devOption: {
+    backgroundColor: '#FFE4B5',
+  },
+  devOptionText: {
+    color: '#FF8C00',
+    fontWeight: '800',
   },
   modalScrollContainer: {
     maxHeight: '85%',

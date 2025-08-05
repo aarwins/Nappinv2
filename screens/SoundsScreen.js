@@ -740,7 +740,9 @@ export default function SoundsScreen({ navigation }) {
       }
     }
     
-    // TODO: Navigate to profile screen when implemented
+    if (navigation) {
+      navigation.navigate('Profile');
+    }
   };
 
   const wakeToneCards = [
@@ -955,10 +957,10 @@ export default function SoundsScreen({ navigation }) {
           <TouchableOpacity style={styles.navButton} onPress={handleFeaturesPress}>
             <View style={styles.featuresIcon}>
               <Svg width={20} height={20} viewBox="0 0 20 20" fill="none">
-                <Path d="M10 0L12.5 7.5H20L14.5 12L16.5 20L10 15L3.5 20L5.5 12L0 7.5H7.5L10 0Z" fill="rgba(253, 253, 253, 0.6)" />
+                <Path d="M10 0L12.5 7.5H20L14.5 12L16.5 20L10 15L3.5 20L5.5 12L0 7.5H7.5L10 0Z" fill="#B7AFC5" />
               </Svg>
             </View>
-            <Text style={styles.navText}>Features</Text>
+            <Text style={styles.navTextActive}>Features</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.navButton} onPress={handleProfilePress}>

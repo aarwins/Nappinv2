@@ -169,6 +169,13 @@ export default function HomeScreen({ navigation }) {
     setShowTimeDropdown(false);
   };
 
+  const getDisplayTime = () => {
+    if (selectedTime === '1') {
+      return '1 min (DEV)';
+    }
+    return `${selectedTime} min`;
+  };
+
   const handleTipPress = () => {
     // Allow users to manually cycle to next tip
     setCurrentTipIndex((prevIndex) => (prevIndex + 1) % napTips.length);
@@ -195,7 +202,9 @@ export default function HomeScreen({ navigation }) {
 
   const handleProfilePress = () => {
     console.log('Profile tab pressed');
-    // TODO: Navigate to profile screen
+    if (navigation) {
+      navigation.navigate('Profile');
+    }
   };
 
 
@@ -274,7 +283,7 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.timeSelectButton} onPress={handleTimeSelect}>
-            <Text style={styles.timeSelectButtonText}>{selectedTime} min</Text>
+            <Text style={styles.timeSelectButtonText}>{getDisplayTime()}</Text>
             <DropdownIcon />
           </TouchableOpacity>
         </View>
@@ -293,6 +302,13 @@ export default function HomeScreen({ navigation }) {
           onPress={() => setShowTimeDropdown(false)}
         >
           <View style={styles.dropdownContainer}>
+            <TouchableOpacity
+              style={[styles.dropdownOption, styles.devOption]}
+              onPress={() => selectTime('1')}
+            >
+              <Text style={[styles.dropdownOptionText, styles.devOptionText]}>1 min (DEV)</Text>
+            </TouchableOpacity>
+            <View style={styles.dropdownSeparator} />
             <TouchableOpacity
               style={styles.dropdownOption}
               onPress={() => selectTime('10')}
@@ -650,5 +666,12 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#E5E8EC',
     marginHorizontal: 12,
+  },
+  devOption: {
+    backgroundColor: '#FFE4B5',
+  },
+  devOptionText: {
+    color: '#FF8C00',
+    fontWeight: '800',
   },
 });

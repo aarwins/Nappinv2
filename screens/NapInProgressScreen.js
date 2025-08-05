@@ -8,12 +8,15 @@ import {
   TextInput,
   Animated,
   AppState,
+  Vibration,
 } from 'react-native';
 import { Svg, Circle, G, Defs, ClipPath, Path } from 'react-native-svg';
+import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
 
 const userPersonalization = require('../utils/userPersonalization');
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import audioManager from '../utils/audioManager';
+import { usePersonalization } from '../components/PersonalizationProvider';
 
 // Back arrow icon
 const BackArrowIcon = () => (
@@ -33,6 +36,9 @@ export default function NapInProgressScreen({ navigation, route }) {
   const wakeSoundFromRoute = route?.params?.wakeSound || 'Soft Chime';
   const [napDuration] = useState(parseInt(napDurationFromRoute));
   const [selectedAmbientSound] = useState(ambientSoundFromRoute);
+  
+  // Get vibration preference from PersonalizationProvider
+  const { vibrationEnabled } = usePersonalization();
 
   // App phases: 'analyzing' -> 'ready' -> 'napping' -> 'complete' -> 'alarm'
   const [currentPhase, setCurrentPhase] = useState('analyzing');
@@ -45,6 +51,9 @@ export default function NapInProgressScreen({ navigation, route }) {
   // Ambient sound state
   const [isAmbientPlaying, setIsAmbientPlaying] = useState(false);
   const ambientStopTimeout = useRef(null);
+  
+  // Vibration state
+  const vibrationInterval = useRef(null);
   
   // Background state management
   const [appState, setAppState] = useState(AppState.currentState);
@@ -190,8 +199,9 @@ export default function NapInProgressScreen({ navigation, route }) {
           setProgress(Math.min(napProgress, 1));
           
           // If time is up while we were in background, trigger completion
-          if (newTimeRemaining <= 0 && currentPhase === 'napping') {
+          if (newTimeRemaining <= 0 && currentPhase === 'napping' && !isAlarmPlaying) {
             console.log('⏰ Nap completed while in background, triggering wake alarm');
+            startContinuousVibration();
             setCurrentPhase('alarm');
             setIsNapTimerActive(false);
             setIsAlarmPlaying(true);
@@ -239,7 +249,7 @@ export default function NapInProgressScreen({ navigation, route }) {
     }, 4000); // Change sentence every 4 seconds
 
     return () => clearInterval(sentenceCycleInterval);
-  }, [currentPhase, userPlan, textFadeAnim]);
+  }, [currentPhase, userPlan]);
 
   // Prediction phase timer - runs algorithms for exactly 8 seconds
   useEffect(() => {
@@ -290,7 +300,7 @@ export default function NapInProgressScreen({ navigation, route }) {
     return () => {
       if (predictionInterval) clearInterval(predictionInterval);
     };
-  }, [currentPhase, progressAnim]);
+  }, [currentPhase]);
 
   // Advanced Sleep Onset Prediction Algorithm (based on sleep science research)
   // Range: 2-15 minutes (conservative to avoid long wait times)
@@ -346,7 +356,7 @@ export default function NapInProgressScreen({ navigation, route }) {
     const userSleepProfile = {
       // PRIMARY FACTORS (highest weight)
       selfReportedSleepLatency: userProfile.sleepLatencyValue || 0, // Use calculated midpoint
-      difficultyFallingAsleep: userProfile.difficultyFallingAsleep ? (userProfile.difficultyFallingAsleep * 10) : 5, // Convert 0-1 to 1-10 scale
+      difficultyFallingAsleep: userProfile.difficultyFallingAsleep !== null && userProfile.difficultyFallingAsleep !== undefined ? (userProfile.difficultyFallingAsleep * 10) : 5, // Convert 0-1 to 1-10 scale
       typicalBedtime: parseBedtime(userProfile.bedtime),
       typicalWakeTime: parseWakeTime(userProfile.wakeTime),
       scheduleType: mapDailyScheduleToType(userProfile.dailySchedule),
@@ -564,13 +574,13 @@ export default function NapInProgressScreen({ navigation, route }) {
     return () => {
       if (readyInterval) clearInterval(readyInterval);
     };
-  }, [currentPhase, progressAnim]);
+  }, [currentPhase]);
 
   // Background-aware nap timer that continues running when app is minimized
   useEffect(() => {
     let napInterval = null;
 
-    if (currentPhase === 'napping' && isNapTimerActive && timeRemaining > 0) {
+    if (currentPhase === 'napping' && isNapTimerActive) {
       napInterval = setInterval(() => {
         const now = Date.now();
         
@@ -597,30 +607,68 @@ export default function NapInProgressScreen({ navigation, route }) {
           
           // Update last update time
           lastUpdateTime.current = now;
+          
+          // Check if nap is complete inside the interval
+          if (newTimeRemaining <= 0 && !isAlarmPlaying) {
+            console.log('⏰ Nap timer completed, starting wake alarm');
+            
+            // Start continuous vibration
+            startContinuousVibration();
+            
+            setCurrentPhase('alarm');
+            setIsNapTimerActive(false);
+            setIsAlarmPlaying(true);
+            startWakeAlarm();
+          }
         } else {
           // Fallback to old method if timestamp not available
-          setTimeRemaining(prevTime => Math.max(0, prevTime - 1));
+          setTimeRemaining(prevTime => {
+            const newTime = Math.max(0, prevTime - 1);
+            
+            // Check if nap is complete in fallback method too
+            if (newTime <= 0 && !isAlarmPlaying) {
+              console.log('⏰ Nap timer completed (fallback), starting wake alarm');
+              
+              // Start continuous vibration
+              startContinuousVibration();
+              
+              setCurrentPhase('alarm');
+              setIsNapTimerActive(false);
+              setIsAlarmPlaying(true);
+              startWakeAlarm();
+            }
+            
+            return newTime;
+          });
         }
       }, 1000);
-    } else if (currentPhase === 'napping' && timeRemaining === 0) {
-      // Nap complete - trigger wake alarm
-      console.log('⏰ Nap timer completed, starting wake alarm');
-      setCurrentPhase('alarm');
-      setIsNapTimerActive(false);
-      setIsAlarmPlaying(true);
-      startWakeAlarm();
     }
 
     return () => {
       if (napInterval) clearInterval(napInterval);
     };
-  }, [currentPhase, isNapTimerActive, timeRemaining, napDuration, progressAnim]);
+  }, [currentPhase, isNapTimerActive, napDuration, vibrationEnabled, isAlarmPlaying]);
 
-  // Cleanup ambient sounds on component unmount
+  // Keep screen awake during nap phases
+  useEffect(() => {
+    if (currentPhase === 'analyzing' || currentPhase === 'ready' || currentPhase === 'napping') {
+      console.log('Activating keep awake for phase:', currentPhase);
+      activateKeepAwake();
+    } else if (currentPhase === 'alarm' || currentPhase === 'complete') {
+      console.log('Deactivating keep awake for phase:', currentPhase);
+      deactivateKeepAwake();
+    }
+  }, [currentPhase]);
+
+  // Cleanup ambient sounds and vibration on component unmount
   useEffect(() => {
     return () => {
       // Stop ambient sound and clear timeout on unmount
       stopAmbientSound();
+      // Stop any ongoing vibration
+      stopContinuousVibration();
+      // Allow screen to sleep again
+      deactivateKeepAwake();
     };
   }, []);
 
@@ -632,13 +680,46 @@ export default function NapInProgressScreen({ navigation, route }) {
   };
 
   const handleBack = () => {
+    // Allow screen to sleep when leaving nap screen
+    deactivateKeepAwake();
     if (navigation) {
       navigation.goBack();
     }
   };
 
+  // Continuous vibration functions
+  const startContinuousVibration = () => {
+    if (!vibrationEnabled) return;
+    
+    console.log('Starting continuous vibration');
+    
+    // Start with immediate vibration pattern
+    Vibration.vibrate([0, 300, 100, 300]); // Short bursts with brief pauses
+    
+    // Set up repeating vibration every 500ms for constant feel
+    vibrationInterval.current = setInterval(() => {
+      Vibration.vibrate([0, 300, 100, 300]); // Pattern: pause 0ms, vibrate 300ms, pause 100ms, vibrate 300ms
+    }, 800); // Every 800ms for overlapping effect
+  };
+
+  const stopContinuousVibration = () => {
+    console.log('Stopping continuous vibration');
+    
+    // Cancel any ongoing vibration
+    Vibration.cancel();
+    
+    // Clear the interval
+    if (vibrationInterval.current) {
+      clearInterval(vibrationInterval.current);
+      vibrationInterval.current = null;
+    }
+  };
+
   const handleNapComplete = async () => {
     console.log('Nap completed! Starting wake alarm...');
+
+    // Start continuous vibration
+    startContinuousVibration();
 
     // Start wake-up alarm
     setCurrentPhase('alarm');
@@ -675,6 +756,12 @@ export default function NapInProgressScreen({ navigation, route }) {
   const dismissAlarm = async () => {
     console.log('Dismissing wake alarm');
     setIsAlarmPlaying(false);
+    
+    // Stop continuous vibration
+    stopContinuousVibration();
+    
+    // Allow screen to sleep when dismissing alarm
+    deactivateKeepAwake();
     
     // Stop the alarm audio
     await audioManager.stopSound();
@@ -764,6 +851,10 @@ export default function NapInProgressScreen({ navigation, route }) {
       console.log('Canceling nap, returning to home');
       // Stop ambient sound if playing
       stopAmbientSound();
+      // Stop any ongoing vibration
+      stopContinuousVibration();
+      // Allow screen to sleep when canceling
+      deactivateKeepAwake();
       if (navigation) {
         navigation.navigate('Home');
       }
@@ -776,6 +867,9 @@ export default function NapInProgressScreen({ navigation, route }) {
     
     // Stop ambient sound if playing
     stopAmbientSound();
+    
+    // Stop any ongoing vibration
+    stopContinuousVibration();
 
     // Calculate actual nap duration when manually ended
     const actualDurationSeconds = (napDuration * 60) - timeRemaining;
@@ -1003,7 +1097,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerSubtitle: {
-    width: 122,
+    width: 200,
     height: 20,
     color: 'rgba(253, 253, 253, 0.70)',
     textAlign: 'center',
@@ -1012,7 +1106,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     lineHeight: 20,
     position: 'absolute',
-    left: 134,
+    left: 95,
     top: 45,
   },
   timer: {
@@ -1129,7 +1223,7 @@ const styles = StyleSheet.create({
   },
   endNapButton: {
     width: 358,
-    height: 97,
+    height: 64,
     paddingHorizontal: 125,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1160,7 +1254,7 @@ const styles = StyleSheet.create({
   // Alarm-specific styles
   alarmControls: {
     alignItems: 'center',
-    gap: 15,
+    gap: 20,
   },
   
   dismissAlarmButton: {

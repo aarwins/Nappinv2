@@ -545,7 +545,7 @@ ${noteText ? `📝 My note: ${noteText}` : ''}
             <Text style={styles.navText}>Features</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.navButton}>
+          <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('Profile')}>
             <ProfileIcon />
             <Text style={styles.navText}>Profile</Text>
           </TouchableOpacity>

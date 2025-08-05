@@ -307,7 +307,9 @@ export default function BreathingExerciseScreen({ navigation }) {
 
   const handleProfilePress = () => {
     console.log('Profile tab pressed');
-    // TODO: Navigate to profile screen when implemented
+    if (navigation) {
+      navigation.navigate('Profile');
+    }
   };
 
   return (
