@@ -198,6 +198,11 @@ export default function IntegrationsScreen({ navigation }) {
     navigation.goBack();
   };
 
+  const handleManageDevices = () => {
+    // Navigate to device selection screen with integration flag
+    navigation.navigate('ChooseDevice', { fromIntegrations: true });
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
@@ -236,6 +241,11 @@ export default function IntegrationsScreen({ navigation }) {
         <Text style={styles.descriptionText}>
           Nappin connects to these apps in order to calculate your sleep. You can disconnect at any time.
         </Text>
+
+        {/* Manage Devices Button */}
+        <TouchableOpacity style={styles.manageDevicesButton} onPress={handleManageDevices}>
+          <Text style={styles.manageDevicesButtonText}>Manage Devices</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -348,5 +358,31 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginHorizontal: 32,
     textAlign: 'left',
+  },
+  manageDevicesButton: {
+    backgroundColor: '#B7AFC5',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    marginTop: 32,
+    marginHorizontal: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  manageDevicesButtonText: {
+    fontFamily: 'Inter',
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FDFDFD',
+    textShadowColor: 'rgba(0, 0, 0, 0.25)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 });

@@ -83,10 +83,10 @@ export default function OnboardingAccountEntryScreen({ navigation }) {
   };
 
   const handleMaybeLater = () => {
-    // Navigate to home screen or skip account creation
+    // Skip account creation and continue to device selection
     console.log('Skip account creation');
     if (navigation) {
-      navigation.navigate('Home');
+      navigation.navigate('ChooseDevice');
     }
   };
 

@@ -80,14 +80,21 @@ const FeatureItem = ({ children, isLast = false }) => (
   </View>
 );
 
-const PricingOption = ({ title, price, trial, isSelected, onPress, showBadge = false }) => (
+const PricingOption = ({ title, price, trial, isSelected, onPress, showBadge = false, monthlyEquivalent, originalYearlyPrice }) => (
   <TouchableOpacity
     style={[styles.pricingOption, isSelected && styles.selectedPricingOption]}
     onPress={onPress}
   >
     <View style={styles.pricingContent}>
       <Text style={styles.pricingTitle}>{title}</Text>
-      <Text style={styles.pricingPrice}>{price}</Text>
+      {monthlyEquivalent ? (
+        <View style={styles.monthlyEquivalentContainer}>
+          <Text style={styles.pricingPrice}>{monthlyEquivalent}</Text>
+          <Text style={styles.billingNote}>billed yearly ({originalYearlyPrice})</Text>
+        </View>
+      ) : (
+        <Text style={styles.pricingPrice}>{price}</Text>
+      )}
       <Text style={styles.pricingTrial}>{trial}</Text>
     </View>
     {showBadge && (
@@ -98,8 +105,9 @@ const PricingOption = ({ title, price, trial, isSelected, onPress, showBadge = f
   </TouchableOpacity>
 );
 
-export default function PrecisionPaywallScreen({ navigation }) {
+export default function PrecisionPaywallScreen({ navigation, route }) {
   const [selectedPlan, setSelectedPlan] = useState('yearly');
+  const fromIntegrations = route?.params?.fromIntegrations || false;
 
   const handleBack = () => {
     if (navigation) {
@@ -121,10 +129,10 @@ export default function PrecisionPaywallScreen({ navigation }) {
   };
 
   const handleMaybeLater = () => {
-    // Handle maybe later - navigate to special offer screen
+    // Handle maybe later - navigate to special offer screen (pass integration flag)
     console.log('Maybe later');
     if (navigation) {
-      navigation.navigate('SpecialOffer');
+      navigation.navigate('SpecialOffer', { fromIntegrations });
     }
   };
 
@@ -181,6 +189,8 @@ export default function PrecisionPaywallScreen({ navigation }) {
             <PricingOption
               title="1 Year"
               price="$59.99 / yr"
+              monthlyEquivalent="$4.99 / mo"
+              originalYearlyPrice="$59.99"
               trial="14-day free trial"
               isSelected={selectedPlan === 'yearly'}
               onPress={() => setSelectedPlan('yearly')}
@@ -369,6 +379,17 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 3,
     fontFamily: 'Inter',
+  },
+  monthlyEquivalentContainer: {
+    marginBottom: 3,
+  },
+  billingNote: {
+    fontSize: 11,
+    fontWeight: '400',
+    color: '#666666',
+    lineHeight: 14,
+    fontFamily: 'Inter',
+    marginTop: 1,
   },
   pricingTrial: {
     fontSize: 12,

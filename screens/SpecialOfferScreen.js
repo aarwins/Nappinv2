@@ -19,8 +19,9 @@ const BackArrowIcon = () => (
   </Svg>
 );
 
-export default function SpecialOfferScreen({ navigation }) {
+export default function SpecialOfferScreen({ navigation, route }) {
   const [selectedPlan, setSelectedPlan] = useState('yearly');
+  const fromIntegrations = route?.params?.fromIntegrations || false;
 
   const handleBack = () => {
     if (navigation) {
@@ -42,10 +43,16 @@ export default function SpecialOfferScreen({ navigation }) {
   };
 
   const handleNoThanks = () => {
-    // Handle declining the offer and navigate to NappinAdvancedPaywallScreen
+    // Handle declining the offer - different flow based on where user came from
     console.log('No thanks');
     if (navigation) {
-      navigation.navigate('NappinAdvancedPaywall');
+      if (fromIntegrations) {
+        // When coming from integrations, go to Home
+        navigation.navigate('Home');
+      } else {
+        // Normal flow - navigate to NappinAdvancedPaywallScreen
+        navigation.navigate('NappinAdvancedPaywall');
+      }
     }
   };
 
@@ -92,9 +99,10 @@ export default function SpecialOfferScreen({ navigation }) {
               >
                 <View style={styles.pricingContent}>
                   <View style={styles.priceRow}>
-                    <Text style={styles.currentPrice}>$44.99 / yr</Text>
-                    <Text style={styles.originalPrice}>$59.99</Text>
+                    <Text style={styles.currentPrice}>$3.75 / mo</Text>
+                    <Text style={styles.originalPrice}>$4.99</Text>
                   </View>
+                  <Text style={styles.billingNoteSpecial}>billed yearly ($44.99)</Text>
                   <Text style={styles.trialText}>14-day free trial</Text>
                 </View>
               </TouchableOpacity>
@@ -314,6 +322,14 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
     fontFamily: 'Inter',
     lineHeight: 16,
+  },
+  billingNoteSpecial: {
+    fontSize: 11,
+    fontWeight: '400',
+    color: '#666666',
+    lineHeight: 14,
+    fontFamily: 'Inter',
+    marginBottom: 2,
   },
   trialText: {
     fontSize: 12,

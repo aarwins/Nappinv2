@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
 } from 'react-native';
-import { Svg, Path } from 'react-native-svg';
+import { Svg, Path, Circle } from 'react-native-svg';
 const userPersonalization = require('../utils/userPersonalization');
 
 const BackArrowIcon = () => (
@@ -82,44 +82,33 @@ const AfternoonSandTimerIcon = () => (
   </Svg>
 );
 
-const EveningDigitalClockIcon = () => (
-  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-    {/* Alarm clock body */}
+const EveningHalfMoonSunIcon = () => (
+  <Svg width={24} height={24} viewBox="0 0 100 100" fill="none">
+    {/* Diagonal line from bottom-left to top-right - thicker to match other SVGs */}
     <Path 
-      d="M6 8C6 7.45 6.45 7 7 7H17C17.55 7 18 7.45 18 8V16C18 16.55 17.55 17 17 17H7C6.45 17 6 16.55 6 16V8Z" 
+      d="M10 90L90 10" 
       stroke="#1E2A38" 
-      strokeWidth="2"
-      fill="transparent"
-    />
-    {/* Left alarm bell */}
-    <Path 
-      d="M7 7C6.5 6 5.5 5 4.5 5.5C3.5 6 4 7 4.5 7.5" 
-      stroke="#1E2A38" 
-      strokeWidth="2"
-      strokeLinecap="round"
-      fill="none"
-    />
-    {/* Right alarm bell */}
-    <Path 
-      d="M17 7C17.5 6 18.5 5 19.5 5.5C20.5 6 20 7 19.5 7.5" 
-      stroke="#1E2A38" 
-      strokeWidth="2"
-      strokeLinecap="round"
-      fill="none"
-    />
-    {/* Left foot */}
-    <Path 
-      d="M7 17L5 20" 
-      stroke="#1E2A38" 
-      strokeWidth="2"
+      strokeWidth="8"
       strokeLinecap="round"
     />
-    {/* Right foot */}
+    {/* Sun circle (filled) */}
+    <Circle 
+      cx="35" 
+      cy="35" 
+      r="12" 
+      fill="#1E2A38"
+    />
+    {/* Sun rays - thicker */}
     <Path 
-      d="M17 17L19 20" 
+      d="M33 15L33 5M48 20L56 12M18 20L10 12M13 35L3 35M20 50L12 58" 
       stroke="#1E2A38" 
-      strokeWidth="2"
+      strokeWidth="6" 
       strokeLinecap="round"
+    />
+    {/* Crescent moon - less thick */}
+    <Path 
+      d="M65 45A25 25 0 1 1 40 70A18 18 0 1 0 65 45Z" 
+      fill="#1E2A38"
     />
   </Svg>
 );
@@ -165,7 +154,7 @@ const timingOptions = [
   {
     id: 4,
     title: 'Evening (5–6 PM)',
-    icon: <EveningDigitalClockIcon />,
+    icon: <EveningHalfMoonSunIcon />,
   },
   {
     id: 5,
@@ -211,10 +200,7 @@ export default function NapTimingScreen({ navigation }) {
     }
   };
 
-  const handleSkip = () => {
-    // Navigate to choose device screen
-    navigation.navigate('ChooseDevice');
-  };
+
 
   const handleBack = () => {
     if (navigation) {
@@ -269,10 +255,7 @@ export default function NapTimingScreen({ navigation }) {
           <Text style={styles.continueText}>Continue 3/5</Text>
         </TouchableOpacity>
 
-        {/* Skip Link */}
-        <TouchableOpacity style={styles.skipContainer} onPress={handleSkip}>
-          <Text style={styles.skipText}>Skip Personalization</Text>
-        </TouchableOpacity>
+
       </View>
     </SafeAreaView>
   );
@@ -377,17 +360,5 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
-  skipContainer: {
-    alignItems: 'center',
-    marginTop: 107,
-    marginBottom: 24,
-  },
-  skipText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: 'rgba(253, 253, 253, 0.6)',
-    textDecorationLine: 'underline',
-    fontFamily: 'Inter',
-    lineHeight: 20,
-  },
+
 });

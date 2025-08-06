@@ -59,14 +59,26 @@ const FeatureItem = ({ children, marginBottom = 15 }) => (
   </View>
 );
 
-const PricingOption = ({ title, price, trial, isSelected, onPress, showBadge = false }) => (
+const PricingOption = ({ title, price, trial, isSelected, onPress, showBadge = false, monthlyEquivalent, originalYearlyPrice, customHeight }) => (
   <TouchableOpacity
-    style={[styles.pricingOption, isSelected && styles.selectedPricingOption]}
+    style={[
+      styles.pricingOption, 
+      isSelected && styles.selectedPricingOption,
+      customHeight && { height: customHeight.base },
+      isSelected && customHeight && { height: customHeight.selected }
+    ]}
     onPress={onPress}
   >
     <View style={styles.pricingContent}>
       <Text style={styles.pricingTitle}>{title}</Text>
-      <Text style={styles.pricingPrice}>{price}</Text>
+      {monthlyEquivalent ? (
+        <View style={styles.monthlyEquivalentContainer}>
+          <Text style={styles.pricingPrice}>{monthlyEquivalent}</Text>
+          <Text style={styles.billingNote}>billed yearly ({originalYearlyPrice})</Text>
+        </View>
+      ) : (
+        <Text style={styles.pricingPrice}>{price}</Text>
+      )}
       <Text style={styles.pricingTrial}>{trial}</Text>
     </View>
     {showBadge && (
@@ -101,9 +113,9 @@ export default function NappinAdvancedPaywallScreen({ navigation }) {
   };
 
   const handleUseFreePlan = () => {
-    // Navigate to NappinFreeScreen
+    // Navigate to Home screen instead of deleted NappinFree
     if (navigation) {
-      navigation.navigate('NappinFree');
+      navigation.navigate('Home');
     }
   };
 
@@ -155,10 +167,13 @@ export default function NappinAdvancedPaywallScreen({ navigation }) {
             <PricingOption
               title="1 Year"
               price="$24.99 / yr"
+              monthlyEquivalent="$2.08 / mo"
+              originalYearlyPrice="$24.99"
               trial="7-day free trial"
               isSelected={selectedPlan === 'yearly'}
               onPress={() => setSelectedPlan('yearly')}
               showBadge={true}
+              customHeight={{ base: 90, selected: 106 }}
             />
 
             <PricingOption
@@ -332,6 +347,17 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 3,
     fontFamily: 'Inter',
+  },
+  monthlyEquivalentContainer: {
+    marginBottom: 3,
+  },
+  billingNote: {
+    fontSize: 11,
+    fontWeight: '400',
+    color: '#666666',
+    lineHeight: 14,
+    fontFamily: 'Inter',
+    marginTop: 1,
   },
   pricingTrial: {
     fontSize: 12,

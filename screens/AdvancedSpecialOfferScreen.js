@@ -42,10 +42,10 @@ export default function AdvancedSpecialOfferScreen({ navigation }) {
   };
 
   const handleSkip = () => {
-    // Handle skipping the offer and navigate to free version
+    // Handle skipping the offer and navigate to home screen instead
     console.log('Skip offer');
     if (navigation) {
-      navigation.navigate('NappinFree');
+      navigation.navigate('Home');
     }
   };
 
@@ -91,9 +91,10 @@ export default function AdvancedSpecialOfferScreen({ navigation }) {
               >
                 <View style={styles.pricingContent}>
                   <View style={styles.priceRow}>
-                    <Text style={styles.currentPrice}>$21.99 / yr</Text>
-                    <Text style={styles.originalPrice}>$24.99</Text>
+                    <Text style={styles.currentPrice}>$1.83 / mo</Text>
+                    <Text style={styles.originalPrice}>$2.08</Text>
                   </View>
+                  <Text style={styles.billingNoteSpecial}>billed yearly ($21.99)</Text>
                   <Text style={styles.trialText}>7-day free trial</Text>
                 </View>
               </TouchableOpacity>
@@ -302,6 +303,14 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
     fontFamily: 'Inter',
     lineHeight: 16,
+  },
+  billingNoteSpecial: {
+    fontSize: 11,
+    fontWeight: '400',
+    color: '#666666',
+    lineHeight: 14,
+    fontFamily: 'Inter',
+    marginBottom: 2,
   },
   trialText: {
     fontSize: 12,

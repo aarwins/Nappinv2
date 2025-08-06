@@ -234,7 +234,7 @@ export default function ProfileScreen({ navigation }) {
 
   const handleDataLegalPress = () => {
     console.log('Data & Legal pressed');
-    // TODO: Navigate to Data & Legal screen
+    navigation.navigate('DataAndLegal');
   };
 
   const handleFeedbackPress = () => {
@@ -300,7 +300,7 @@ export default function ProfileScreen({ navigation }) {
 
           <ProfileCard
             icon={<DatabaseIcon />}
-            title="Nappin Ai Data"
+            title="Nappin AI Data"
             subtitle="Edit your advanced data"
             onPress={handleNappinDataPress}
           />
@@ -315,7 +315,7 @@ export default function ProfileScreen({ navigation }) {
           <ProfileCard
             icon={<IntegrationsIcon />}
             title="Integrations"
-            subtitle="Apple Health connected"
+            subtitle="Manage devices • Apple Health connected"
             onPress={handleIntegrationsPress}
           />
 

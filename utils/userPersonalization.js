@@ -35,7 +35,10 @@ class UserPersonalizationManager {
       personalFactors: 0,
       
       // Final Readiness Score
-      overallReadiness: 0
+      overallReadiness: 0,
+      
+      // Activity-based data
+      workoutTime: null
     };
   }
 
@@ -43,6 +46,11 @@ class UserPersonalizationManager {
   setGoals(goals) {
     this.userProfile.goals = goals;
     this.recalculateReadiness();
+  }
+
+  setWorkoutTime(workoutTime) {
+    this.userProfile.workoutTime = workoutTime;
+    console.log('Workout time set to:', workoutTime);
   }
 
   setWellnessFocus(focus) {
@@ -528,6 +536,160 @@ class UserPersonalizationManager {
 
 
 
+  calculateTimingConflict(workoutRecoveryStart, workoutRecoveryEnd) {
+    // Check how workout recovery window aligns with user's preferred nap timing
+    if (!this.userProfile.napTiming) {
+      return 0.8; // No timing preference set, moderate boost since user hasn't specified they like this time
+    }
+
+    const timings = Array.isArray(this.userProfile.napTiming) ? this.userProfile.napTiming : [this.userProfile.napTiming];
+    let hasAlignment = false;
+    let hasConflict = false;
+
+    timings.forEach(timing => {
+      let preferredStart, preferredEnd;
+      
+      switch (timing) {
+        case 'morning':
+          preferredStart = 9;
+          preferredEnd = 12;
+          break;
+        case 'midday':
+        case 'afternoon':
+          preferredStart = 12;
+          preferredEnd = 15;
+          break;
+        case 'evening':
+          preferredStart = 17;
+          preferredEnd = 20;
+          break;
+        case 'flexible':
+        case 'whenever_i_feel_tired':
+          hasAlignment = true; // Flexible users get full benefit
+          return;
+        default:
+          return;
+      }
+
+      // Check if workout recovery window overlaps with preferred nap timing
+      if (workoutRecoveryStart < preferredEnd && workoutRecoveryEnd > preferredStart) {
+        // Calculate overlap percentage
+        const overlapStart = Math.max(workoutRecoveryStart, preferredStart);
+        const overlapEnd = Math.min(workoutRecoveryEnd, preferredEnd);
+        const overlapHours = overlapEnd - overlapStart;
+        const recoveryWindowHours = workoutRecoveryEnd - workoutRecoveryStart;
+        const overlapPercentage = overlapHours / recoveryWindowHours;
+
+        if (overlapPercentage > 0.5) {
+          // Good alignment - recovery window mostly within preferred nap time
+          hasAlignment = true;
+          console.log(`✅ Workout recovery (${workoutRecoveryStart.toFixed(1)}-${workoutRecoveryEnd.toFixed(1)}) aligns well with ${timing} nap preference (${preferredStart}-${preferredEnd})`);
+        } else {
+          // Partial overlap but mostly conflict
+          hasConflict = true;
+          console.log(`⚠️ Workout recovery (${workoutRecoveryStart.toFixed(1)}-${workoutRecoveryEnd.toFixed(1)}) partially conflicts with ${timing} nap preference (${preferredStart}-${preferredEnd})`);
+        }
+      } else {
+        // No overlap - user doesn't prefer napping during recovery time
+        console.log(`❌ Workout recovery (${workoutRecoveryStart.toFixed(1)}-${workoutRecoveryEnd.toFixed(1)}) doesn't align with ${timing} nap preference (${preferredStart}-${preferredEnd})`);
+      }
+    });
+
+    // Return multiplier based on alignment
+    if (hasAlignment) {
+      return 1.0; // Full boost - recovery time aligns with preferred nap timing
+    } else if (hasConflict) {
+      return 0.5; // Significant reduction - direct conflict with preferred timing
+    } else {
+      return 0.7; // Moderate reduction - user simply doesn't prefer napping during recovery time
+    }
+  }
+
+  calculateWorkoutRecoveryBoost() {
+    // Only apply boost if user has selected "Recover after activity" goal and has a workout time
+    const hasRecoveryGoal = this.userProfile.goals && this.userProfile.goals.includes('post_activity_recovery');
+    if (!hasRecoveryGoal || !this.userProfile.workoutTime) {
+      return 0;
+    }
+
+    const now = this.debugTimeOverride ? new Date(this.debugTimeOverride) : new Date();
+    const currentHour = now.getHours();
+    const currentMinutes = now.getMinutes();
+    const currentTimeInMinutes = currentHour * 60 + currentMinutes;
+
+    // Handle 'varies' workout time - no specific boost timing
+    if (this.userProfile.workoutTime === 'varies') {
+      console.log('🏋️ Workout time varies - no specific recovery boost applied');
+      return 0;
+    }
+
+    const workoutHour = this.userProfile.workoutTime;
+    
+    // Check if user has a 9-5 job and works out in the morning before work
+    const schedules = Array.isArray(this.userProfile.dailySchedule) ? this.userProfile.dailySchedule : [this.userProfile.dailySchedule];
+    const has9to5Job = schedules && schedules.includes('9to5');
+    
+    if (has9to5Job && workoutHour >= 6 && workoutHour <= 9) {
+      // Working out before a 9-5 job - they'll be at work during recovery time, no boost
+      console.log('🏋️ Morning workout before 9-5 job - no recovery boost (will be at work)');
+      return 0;
+    }
+
+    // Calculate recovery window: workout time + 1.5 hours for activity + shower
+    const recoveryStartHour = workoutHour + 1.5;
+    const recoveryStartMinutes = recoveryStartHour * 60;
+    const recoveryEndMinutes = recoveryStartMinutes + 60; // 1 hour boost duration
+
+    // Check for conflict with user's preferred nap timing
+    const conflictReduction = this.calculateTimingConflict(recoveryStartHour, recoveryStartHour + 1);
+
+    let boost = 0;
+
+    // Check if we're in the recovery boost window
+    if (currentTimeInMinutes >= recoveryStartMinutes && currentTimeInMinutes <= recoveryEndMinutes) {
+      // We're in the peak recovery window - apply boost
+      const timeIntoBoost = currentTimeInMinutes - recoveryStartMinutes;
+      const boostProgress = timeIntoBoost / 60; // 0 to 1 over the hour
+      
+      // Start strong and taper off gradually
+      if (boostProgress <= 0.42) {
+        // First 25 minutes - peak boost
+        boost = 25;
+      } else if (boostProgress <= 0.83) {
+        // Middle 25 minutes - strong boost  
+        boost = 20;
+      } else {
+        // Final 15 minutes - moderate boost tapering down
+        boost = 15 - (boostProgress - 0.83) * 29.4; // Taper from 15 to 10
+      }
+      
+      // Apply conflict reduction if workout recovery conflicts with preferred nap timing
+      boost *= conflictReduction;
+      
+      const conflictMessage = conflictReduction < 1 ? ` (reduced ${((1 - conflictReduction) * 100).toFixed(0)}% due to nap timing conflict)` : '';
+      console.log(`🏋️ Post-workout recovery boost: ${boost.toFixed(1)} points (${(boostProgress * 100).toFixed(1)}% through recovery window)${conflictMessage}`);
+    } else if (currentTimeInMinutes < recoveryStartMinutes) {
+      // Before recovery window
+      const minutesUntilRecovery = recoveryStartMinutes - currentTimeInMinutes;
+      if (minutesUntilRecovery <= 30) {
+        // Small anticipatory boost in the 30 minutes before recovery window
+        boost = 5 * conflictReduction;
+        const conflictMessage = conflictReduction < 1 ? ` (reduced due to nap timing conflict)` : '';
+        console.log(`🏋️ Pre-recovery anticipation boost: ${boost.toFixed(1)} points (${minutesUntilRecovery} min until recovery)${conflictMessage}`);
+      }
+    } else {
+      // After recovery window - small residual benefit for next 30 minutes
+      const minutesAfterRecovery = currentTimeInMinutes - recoveryEndMinutes;
+      if (minutesAfterRecovery <= 30) {
+        boost = (8 - (minutesAfterRecovery / 30) * 8) * conflictReduction; // Taper from 8 to 0, with conflict reduction
+        const conflictMessage = conflictReduction < 1 ? ` (reduced due to nap timing conflict)` : '';
+        console.log(`🏋️ Post-recovery residual boost: ${boost.toFixed(1)} points (${minutesAfterRecovery} min after recovery)${conflictMessage}`);
+      }
+    }
+
+    return Math.max(0, Math.min(25, boost)); // Cap boost at 25 points
+  }
+
   calculatePersonalFactors() {
     const now = this.debugTimeOverride ? new Date(this.debugTimeOverride) : new Date();
     const currentHour = now.getHours();
@@ -576,6 +738,10 @@ class UserPersonalizationManager {
       }
     }
 
+    // Workout recovery boost
+    const workoutBoost = this.calculateWorkoutRecoveryBoost();
+    personalScore += workoutBoost;
+
     // TIME-BASED PERSONAL FACTOR PENALTIES (skip for night shift workers)
     // Personal factors matter less during biologically terrible times
     const schedules = Array.isArray(this.userProfile.dailySchedule) ? this.userProfile.dailySchedule : [this.userProfile.dailySchedule];
@@ -620,6 +786,7 @@ class UserPersonalizationManager {
     console.log('😰 Stress level:', this.userProfile.stressLevel);
     console.log('🏃 Activity level:', this.userProfile.activityLevel);
     console.log('💤 Sleep duration:', this.userProfile.sleepDuration);
+    console.log('🏋️ Workout time:', this.userProfile.workoutTime);
     console.log('📊 SCORES:');
     console.log('  📈 Time-based (55%):', this.userProfile.timeBasedReadiness);
     console.log('  🌙 Circadian (25%):', this.userProfile.circadianAlignment);

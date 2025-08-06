@@ -29,13 +29,6 @@ export default function NappinAdvancedSuccessScreen({ navigation, route }) {
     }
   };
 
-  const handleContinueToAccount = () => {
-    // Navigate to account creation/sign in for both flows
-    if (navigation) {
-      navigation.navigate('OnboardingAccountEntry');
-    }
-  };
-
   const handleGoHome = () => {
     // Navigate to home screen
     console.log('Navigate to home screen');
@@ -84,14 +77,9 @@ export default function NappinAdvancedSuccessScreen({ navigation, route }) {
             </Text>
           </View>
 
-          {/* Continue to Account Button */}
-          <TouchableOpacity style={styles.primaryButton} onPress={handleContinueToAccount}>
-            <Text style={styles.primaryButtonText}>Continue to Account Creation/Sign in</Text>
-          </TouchableOpacity>
-
           {/* Go Home Button */}
-          <TouchableOpacity style={styles.secondaryButton} onPress={handleGoHome}>
-            <Text style={styles.secondaryButtonText}>Go Home</Text>
+          <TouchableOpacity style={styles.primaryButton} onPress={handleGoHome}>
+            <Text style={styles.primaryButtonText}>Go Home</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

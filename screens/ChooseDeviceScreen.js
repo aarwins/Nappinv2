@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { Svg, Path, G, Defs, ClipPath } from 'react-native-svg';
 
@@ -165,8 +166,9 @@ const DeviceCard = ({ device, isSelected, onPress, isFullWidth = false }) => (
   </TouchableOpacity>
 );
 
-export default function ChooseDeviceScreen({ navigation }) {
+export default function ChooseDeviceScreen({ navigation, route }) {
   const [selectedDevice, setSelectedDevice] = useState(null);
+  const fromIntegrations = route?.params?.fromIntegrations || false;
 
   const handleDeviceSelect = (deviceId) => {
     setSelectedDevice(deviceId);
@@ -174,19 +176,61 @@ export default function ChooseDeviceScreen({ navigation }) {
 
   const handleContinue = () => {
     if (selectedDevice) {
-      if (selectedDevice === 'apple-watch') {
-        // Navigate to PrecisionPaywallScreen for Apple Watch
-        navigation.navigate('PrecisionPaywall');
+      if (fromIntegrations) {
+        // Special flow when coming from integrations
+        if (selectedDevice === 'apple-watch') {
+          // Navigate to PrecisionPaywall for Apple Watch with integration flag
+          navigation.navigate('PrecisionPaywall', { fromIntegrations: true });
+        } else {
+          // For other devices, show Apple Health sync prompt and go to Home
+          const deviceName = selectedDevice === 'fitbit' ? 'Fitbit' :
+                           selectedDevice === 'oura-ring' ? 'Oura Ring' :
+                           selectedDevice === 'garmin' ? 'Garmin' : 'your device';
+          
+          Alert.alert(
+            'Sync with Apple Health',
+            `Would you like to sync your ${deviceName} data with Apple Health to improve your nap recommendations?`,
+            [
+              {
+                text: 'Not Now',
+                style: 'cancel',
+                onPress: () => {
+                  console.log('Apple Health sync declined for device:', selectedDevice);
+                  navigation.navigate('Home');
+                },
+              },
+              {
+                text: 'Sync Data',
+                onPress: () => {
+                  console.log('Apple Health sync accepted for device:', selectedDevice);
+                  // TODO: Implement actual Apple Health sync
+                  navigation.navigate('Home');
+                },
+              },
+            ]
+          );
+        }
       } else {
-        // Navigate to NappinAdvancedPaywallNonApple for all other devices
-        navigation.navigate('NappinAdvancedPaywallNonApple');
+        // Normal onboarding flow
+        if (selectedDevice === 'apple-watch') {
+          // Navigate to PrecisionPaywallScreen for Apple Watch
+          navigation.navigate('PrecisionPaywall');
+        } else {
+          // Navigate to NappinAdvancedPaywallNonApple for all other devices
+          navigation.navigate('NappinAdvancedPaywallNonApple');
+        }
       }
     }
   };
 
   const handleSkip = () => {
-    // Navigate to NappinAdvancedPaywallNonApple when skipping device selection
-    navigation.navigate('NappinAdvancedPaywallNonApple');
+    if (fromIntegrations) {
+      // When coming from integrations, skip goes back to Home
+      navigation.navigate('Home');
+    } else {
+      // Normal onboarding flow
+      navigation.navigate('NappinAdvancedPaywallNonApple');
+    }
   };
 
   const handleBack = () => {
@@ -290,7 +334,7 @@ const styles = StyleSheet.create({
   backButton: {
     position: 'absolute',
     left: 15,
-    top: 69,
+    top: 100,
     zIndex: 1,
     width: 24,
     height: 24,

@@ -22,7 +22,7 @@ import NappinAdvancedPaywallNonAppleScreen from './screens/NappinAdvancedPaywall
 import AdvancedSpecialOfferScreen from './screens/AdvancedSpecialOfferScreen';
 import NappinAdvancedSetupScreen from './screens/NappinAdvancedSetupScreen';
 import NappinAdvancedSuccessScreen from './screens/NappinAdvancedSuccessScreen';
-import NappinFreeScreen from './screens/NappinFreeScreen';
+
 import HomeScreen from './screens/HomeScreen';
 import FinalizeNapScreen from './screens/FinalizeNapScreen';
 import NapInProgressScreen from './screens/NapInProgressScreen';
@@ -47,6 +47,9 @@ import NappinAiDataScreen from './screens/NappinAiDataScreen';
 import NotificationsScreen from './screens/NotificationsScreen';
 import IntegrationsScreen from './screens/IntegrationsScreen';
 import AppPreferencesScreen from './screens/AppPreferencesScreen';
+import DataAndLegalScreen from './screens/DataAndLegalScreen';
+import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
+import TermsOfUseScreen from './screens/TermsOfUseScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -61,28 +64,28 @@ export default function App() {
             animation: 'slide_from_right',
           }}
         >
-          <Stack.Screen name="Splash" component={SplashScreen} />
-          <Stack.Screen name="GoalSelection" component={GoalSelectionScreen} />
-          <Stack.Screen name="WellnessFocus" component={WellnessFocusScreen} />
-          <Stack.Screen name="NapEnvironment" component={NapEnvironmentScreen} />
-          <Stack.Screen name="NapTiming" component={NapTimingScreen} />
-          <Stack.Screen name="DailySchedule" component={DailyScheduleScreen} />
-          <Stack.Screen name="ChooseDevice" component={ChooseDeviceScreen} />
-          <Stack.Screen name="AppleWatchSetup" component={AppleWatchSetupScreen} />
-          <Stack.Screen name="OnboardingAccountEntry" component={OnboardingAccountEntryScreen} />
-          <Stack.Screen name="CreateAccount" component={CreateAccountScreen} />
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="PrecisionPaywall" component={PrecisionPaywallScreen} />
-          <Stack.Screen name="SpecialOffer" component={SpecialOfferScreen} />
-          <Stack.Screen name="NappinAdvancedPaywall" component={NappinAdvancedPaywallScreen} />
-          <Stack.Screen name="NappinAdvancedPaywallNonApple" component={NappinAdvancedPaywallNonAppleScreen} />
-          <Stack.Screen name="AdvancedSpecialOffer" component={AdvancedSpecialOfferScreen} />
-          <Stack.Screen name="NappinAdvancedSetup" component={NappinAdvancedSetupScreen} />
-          <Stack.Screen name="NappinAdvancedSuccess" component={NappinAdvancedSuccessScreen} />
-          <Stack.Screen name="NappinFree" component={NappinFreeScreen} />
+          <Stack.Screen name="Splash" component={SplashScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="GoalSelection" component={GoalSelectionScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="WellnessFocus" component={WellnessFocusScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="NapEnvironment" component={NapEnvironmentScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="NapTiming" component={NapTimingScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="DailySchedule" component={DailyScheduleScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="ChooseDevice" component={ChooseDeviceScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="AppleWatchSetup" component={AppleWatchSetupScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="OnboardingAccountEntry" component={OnboardingAccountEntryScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="CreateAccount" component={CreateAccountScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="Login" component={LoginScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="PrecisionPaywall" component={PrecisionPaywallScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="SpecialOffer" component={SpecialOfferScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="NappinAdvancedPaywall" component={NappinAdvancedPaywallScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="NappinAdvancedPaywallNonApple" component={NappinAdvancedPaywallNonAppleScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="AdvancedSpecialOffer" component={AdvancedSpecialOfferScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="NappinAdvancedSetup" component={NappinAdvancedSetupScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="NappinAdvancedSuccess" component={NappinAdvancedSuccessScreen} options={{ gestureEnabled: false }} />
+
           <Stack.Screen name="Home" component={HomeScreen} />
-          <Stack.Screen name="FinalizeNap" component={FinalizeNapScreen} />
-          <Stack.Screen name="NapInProgress" component={NapInProgressScreen} />
+          <Stack.Screen name="FinalizeNap" component={FinalizeNapScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="NapInProgress" component={NapInProgressScreen} options={{ gestureEnabled: false }} />
           <Stack.Screen name="NapComplete" component={NapCompleteScreen} />
           <Stack.Screen name="NapHistory" component={NapHistoryScreen} />
           <Stack.Screen name="NapShareScreen" component={NapShareScreen} />
@@ -104,6 +107,9 @@ export default function App() {
           <Stack.Screen name="Notifications" component={NotificationsScreen} />
           <Stack.Screen name="Integrations" component={IntegrationsScreen} />
           <Stack.Screen name="AppPreferences" component={AppPreferencesScreen} />
+          <Stack.Screen name="DataAndLegal" component={DataAndLegalScreen} />
+          <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+          <Stack.Screen name="TermsOfUse" component={TermsOfUseScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </PersonalizationProvider>

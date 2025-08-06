@@ -154,6 +154,12 @@ export default function LoginScreen({ navigation }) {
       //   // navigation.navigate('Home');
       // }
       
+      // Temporary: For now, simulate successful login and navigate to home (for returning users)
+      console.log('Login successful (simulated)');
+      if (navigation) {
+        navigation.navigate('Home');
+      }
+      
     } catch (error) {
       console.error('Login Error:', error);
       // TODO: Show error message to user based on error type

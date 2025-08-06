@@ -100,7 +100,7 @@ const environmentOptions = [
   {
     id: 5,
     icon: <HeartIcon />,
-    title: 'A Health Focused Space',
+    title: 'None of these fit',
   },
 ];
 
@@ -126,10 +126,7 @@ export default function NapEnvironmentScreen({ navigation }) {
     }
   };
 
-  const handleSkip = () => {
-    // Navigate to choose device screen
-    navigation.navigate('ChooseDevice');
-  };
+
 
   const handleBack = () => {
     if (navigation) {
@@ -184,10 +181,7 @@ export default function NapEnvironmentScreen({ navigation }) {
           <Text style={styles.continueText}>Continue 2/5</Text>
         </TouchableOpacity>
 
-        {/* Skip Link */}
-        <TouchableOpacity style={styles.skipContainer} onPress={handleSkip}>
-          <Text style={styles.skipText}>Skip Personalization</Text>
-        </TouchableOpacity>
+
       </View>
     </SafeAreaView>
   );
@@ -292,17 +286,5 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
-  skipContainer: {
-    alignItems: 'center',
-    marginTop: 107,
-    marginBottom: 24,
-  },
-  skipText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: 'rgba(253, 253, 253, 0.6)',
-    textDecorationLine: 'underline',
-    fontFamily: 'Inter',
-    lineHeight: 20,
-  },
+
 });

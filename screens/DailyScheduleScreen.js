@@ -68,27 +68,59 @@ const JobIcon = () => (
 
 const ShiftWorkerIcon = () => (
   <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+    {/* Clock circle */}
     <Path
-      d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20ZM12.5 7H11V13L16.25 16.15L17 14.92L12.5 12.25V7Z"
-      fill="#1E2A38"
+      d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2Z"
+      stroke="#1E2A38"
+      strokeWidth="2.5"
+      fill="none"
+    />
+    {/* Clock hands */}
+    <Path
+      d="M12 7V13L16.25 16.15"
+      stroke="#1E2A38"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="none"
     />
   </Svg>
 );
 
 const RemoteWorkerIcon = () => (
-  <Svg width={26} height={26} viewBox="0 0 26 26" fill="none">
+  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
     <Path
-      d="M5.41666 3.25C4.2275 3.25 3.25 4.2275 3.25 5.41666V16.25C3.25 17.4392 4.2275 18.4167 5.41666 18.4167H20.5833C21.7725 18.4167 22.75 17.4392 22.75 16.25V5.41666C22.75 4.2275 21.7725 3.25 20.5833 3.25H5.41666ZM5.41666 4.875H20.5833C20.8717 4.875 21.125 5.12833 21.125 5.41666V14.625H4.875V5.41666C4.875 5.12833 5.12833 4.875 5.41666 4.875ZM4.875 16.25V16.0833H21.125V16.25C21.125 16.5383 20.8717 16.7917 20.5833 16.7917H5.41666C5.12833 16.7917 4.875 16.5383 4.875 16.25ZM2.16666 20.125H23.8333V21.75H2.16666V20.125Z"
-      fill="#1E2A38"
+      d="M3 15H2.5C1.67157 15 1 15.6716 1 16.5C1 17.3284 1.67157 18 2.5 18H21.5C22.3284 18 23 17.3284 23 16.5C23 15.6716 22.3284 15 21.5 15H21M3 15H21M3 15V6.2002C3 5.08009 3 4.51962 3.21799 4.0918C3.40973 3.71547 3.71547 3.40973 4.0918 3.21799C4.51962 3 5.08009 3 6.2002 3H17.8002C18.9203 3 19.4796 3 19.9074 3.21799C20.2837 3.40973 20.5905 3.71547 20.7822 4.0918C21 4.5192 21 5.07899 21 6.19691V15"
+      stroke="#1E2A38"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
     />
   </Svg>
 );
 
 const OtherIcon = () => (
-  <Svg width={26} height={26} viewBox="0 0 26 26" fill="none">
+  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+    {/* Info circle */}
     <Path
-      d="M13 2.1665C7.01833 2.1665 2.16667 7.01816 2.16667 12.9998C2.16667 18.9815 7.01833 23.8332 13 23.8332C18.9817 23.8332 23.8333 18.9815 23.8333 12.9998C23.8333 7.01816 18.9817 2.1665 13 2.1665ZM13 3.7915C18.0842 3.7915 22.2083 7.91566 22.2083 12.9998C22.2083 18.084 18.0842 22.2082 13 22.2082C7.91583 22.2082 3.79167 18.084 3.79167 12.9998C3.79167 7.91566 7.91583 3.7915 13 3.7915ZM12.1875 7.02067H13.8125V8.64567H12.1875V7.02067ZM12.1875 10.8332H13.8125V19.5207H12.1875V10.8332Z"
-      fill="#1E2A38"
+      d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2Z"
+      stroke="#1E2A38"
+      strokeWidth="2.5"
+      fill="none"
+    />
+    {/* Info dot */}
+    <Path
+      d="M12 8V8.01"
+      stroke="#1E2A38"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+    />
+    {/* Info line */}
+    <Path
+      d="M12 12V16"
+      stroke="#1E2A38"
+      strokeWidth="2.5"
+      strokeLinecap="round"
     />
   </Svg>
 );
@@ -150,20 +182,17 @@ export default function DailyScheduleScreen({ navigation }) {
         if (schedule?.title.toLowerCase().includes('other') || schedule?.title.toLowerCase().includes('not working')) return 'other_not_working';
         return schedule?.title.toLowerCase().replace(/[\s&-]+/g, '_');
       });
-      
-      // Save all selected schedules, with first as primary  
+
+      // Save all selected schedules, with first as primary
       const primarySchedule = scheduleNames[0];
       userPersonalization.setDailySchedule(scheduleNames); // Save array instead of single value
       console.log('Daily schedules saved:', scheduleNames, 'Primary:', primarySchedule);
-      
-      navigation.navigate('ChooseDevice');
+
+      navigation.navigate('OnboardingAccountEntry');
     }
   };
 
-  const handleSkip = () => {
-    // Navigate to choose device screen
-    navigation.navigate('ChooseDevice');
-  };
+
 
   const handleBack = () => {
     if (navigation) {
@@ -218,10 +247,7 @@ export default function DailyScheduleScreen({ navigation }) {
           <Text style={styles.continueText}>Continue 5/5</Text>
         </TouchableOpacity>
 
-        {/* Skip Link */}
-        <TouchableOpacity style={styles.skipContainer} onPress={handleSkip}>
-          <Text style={styles.skipText}>Skip Personalization</Text>
-        </TouchableOpacity>
+
       </View>
     </SafeAreaView>
   );
@@ -326,17 +352,5 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
-  skipContainer: {
-    alignItems: 'center',
-    marginTop: 107,
-    marginBottom: 24,
-  },
-  skipText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: 'rgba(253, 253, 253, 0.6)',
-    textDecorationLine: 'underline',
-    fontFamily: 'Inter',
-    lineHeight: 20,
-  },
+
 });

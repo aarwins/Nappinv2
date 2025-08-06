@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,15 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
+  Modal,
 } from 'react-native';
 import { Svg, Path, G, Defs, ClipPath } from 'react-native-svg';
 
 const userPersonalization = require('../utils/userPersonalization');
+
+// Scroll wheel picker data
+const hours = Array.from({ length: 12 }, (_, i) => i + 1);
+const periods = ['AM', 'PM'];
 
 const SunIcon = () => (
   <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
@@ -107,8 +112,43 @@ const goalOptions = [
 
 export default function GoalSelectionScreen({ navigation }) {
   const [selectedGoals, setSelectedGoals] = useState([]);
+  const [showWorkoutTimeModal, setShowWorkoutTimeModal] = useState(false);
+  const [selectedWorkoutTime, setSelectedWorkoutTime] = useState(null);
+  const [selectedHour, setSelectedHour] = useState(3);
+  const [selectedPeriod, setSelectedPeriod] = useState('PM');
+  
+  const scrollRef = useRef(null);
+  const periodScrollRef = useRef(null);
+
+  // Set initial scroll positions when modal opens
+  useEffect(() => {
+    if (showWorkoutTimeModal) {
+      // Set hour scroll position
+      const hourIndex = hours.indexOf(selectedHour);
+      if (scrollRef.current && hourIndex >= 0) {
+        setTimeout(() => {
+          scrollRef.current.scrollTo({ y: hourIndex * 50, animated: false });
+        }, 100);
+      }
+      
+      // Set period scroll position
+      const periodIndex = periods.indexOf(selectedPeriod);
+      if (periodScrollRef.current && periodIndex >= 0) {
+        setTimeout(() => {
+          periodScrollRef.current.scrollTo({ y: periodIndex * 50, animated: false });
+        }, 100);
+      }
+    }
+  }, [showWorkoutTimeModal, selectedHour, selectedPeriod]);
 
   const handleGoalSelect = (goalId) => {
+    // Check if this is the "Recover after activity" goal (id: 2)
+    if (goalId === 2 && !selectedGoals.includes(goalId)) {
+      // Show workout time modal before adding to selected goals
+      setShowWorkoutTimeModal(true);
+      return;
+    }
+    
     setSelectedGoals(prev => {
       if (prev.includes(goalId)) {
         // Remove if already selected
@@ -118,6 +158,80 @@ export default function GoalSelectionScreen({ navigation }) {
         return [...prev, goalId];
       }
     });
+  };
+
+  // Handle scroll selection for hour picker
+  const handleHourScroll = (event) => {
+    const y = event.nativeEvent.contentOffset.y;
+    const index = Math.round(y / 50);
+    const hour = hours[Math.max(0, Math.min(index, hours.length - 1))];
+    if (hour && hour !== selectedHour) {
+      setSelectedHour(hour);
+    }
+  };
+
+  // Handle scroll selection for period picker
+  const handlePeriodScroll = (event) => {
+    const y = event.nativeEvent.contentOffset.y;
+    const index = Math.round(y / 50);
+    const period = periods[Math.max(0, Math.min(index, periods.length - 1))];
+    if (period && period !== selectedPeriod) {
+      setSelectedPeriod(period);
+    }
+  };
+
+  const handleWorkoutTimeConfirm = () => {
+    // Convert to 24-hour format for storage
+    let hour24 = selectedHour;
+    if (selectedPeriod === 'PM' && selectedHour !== 12) {
+      hour24 = selectedHour + 12;
+    } else if (selectedPeriod === 'AM' && selectedHour === 12) {
+      hour24 = 0;
+    }
+    
+    const timeData = {
+      hour: selectedHour,
+      period: selectedPeriod,
+      hour24: hour24,
+      display: `${selectedHour}:00 ${selectedPeriod}`
+    };
+    
+    setSelectedWorkoutTime(timeData);
+    
+    // Save workout time to personalization
+    userPersonalization.setWorkoutTime(hour24);
+    console.log('Workout time saved:', timeData);
+    
+    // Add the "Recover after activity" goal to selected goals
+    setSelectedGoals(prev => [...prev, 2]);
+    
+    // Close the modal
+    setShowWorkoutTimeModal(false);
+  };
+
+  const handleWorkoutTimeRandom = () => {
+    const timeData = {
+      hour: 'varies',
+      period: '',
+      hour24: 'varies',
+      display: 'Random/It varies'
+    };
+    
+    setSelectedWorkoutTime(timeData);
+    
+    // Save workout time to personalization
+    userPersonalization.setWorkoutTime('varies');
+    console.log('Workout time saved:', timeData);
+    
+    // Add the "Recover after activity" goal to selected goals
+    setSelectedGoals(prev => [...prev, 2]);
+    
+    // Close the modal
+    setShowWorkoutTimeModal(false);
+  };
+
+  const handleWorkoutTimeModalClose = () => {
+    setShowWorkoutTimeModal(false);
   };
 
   const handleContinue = () => {
@@ -143,10 +257,7 @@ export default function GoalSelectionScreen({ navigation }) {
     }
   };
 
-  const handleSkip = () => {
-    // Navigate to choose device screen
-    navigation.navigate('ChooseDevice');
-  };
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -187,12 +298,106 @@ export default function GoalSelectionScreen({ navigation }) {
         >
           <Text style={styles.continueText}>Continue 1/5</Text>
         </TouchableOpacity>
-
-        {/* Skip Link */}
-        <TouchableOpacity style={styles.skipContainer} onPress={handleSkip}>
-          <Text style={styles.skipText}>Skip Personalization</Text>
-        </TouchableOpacity>
       </View>
+
+      {/* Workout Time Modal */}
+      <Modal
+        visible={showWorkoutTimeModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={handleWorkoutTimeModalClose}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={handleWorkoutTimeModalClose}
+              >
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <Text style={styles.modalTitle}>Workout Time</Text>
+              
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={handleWorkoutTimeConfirm}
+              >
+                <Text style={[styles.modalButtonText, styles.modalConfirmText]}>Confirm</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.modalSubtitle}>
+              This helps us suggest nap times after your activities.
+            </Text>
+            
+            {/* Custom Time Picker Wheels */}
+            <View style={styles.pickerContainer}>
+              <View style={styles.pickerSelectionOverlay} />
+              
+              {/* Hour Picker */}
+              <View style={styles.pickerColumn}>
+                <ScrollView
+                  ref={scrollRef}
+                  style={styles.pickerScroll}
+                  showsVerticalScrollIndicator={false}
+                  snapToInterval={50}
+                  decelerationRate="fast"
+                  onMomentumScrollEnd={handleHourScroll}
+                  contentContainerStyle={styles.pickerScrollContent}
+                >
+                  <View style={styles.pickerPadding} />
+                  {hours.map((hour) => (
+                    <View key={hour} style={styles.pickerItem}>
+                      <Text style={[
+                        styles.pickerItemText,
+                        hour === selectedHour && styles.pickerItemTextSelected
+                      ]}>
+                        {hour}
+                      </Text>
+                    </View>
+                  ))}
+                  <View style={styles.pickerPadding} />
+                </ScrollView>
+              </View>
+
+              {/* Period Picker */}
+              <View style={styles.pickerColumn}>
+                <ScrollView
+                  ref={periodScrollRef}
+                  style={styles.pickerScroll}
+                  showsVerticalScrollIndicator={false}
+                  snapToInterval={50}
+                  decelerationRate="fast"
+                  onMomentumScrollEnd={handlePeriodScroll}
+                  contentContainerStyle={styles.pickerScrollContent}
+                >
+                  <View style={styles.pickerPadding} />
+                  {periods.map((period) => (
+                    <View key={period} style={styles.pickerItem}>
+                      <Text style={[
+                        styles.pickerItemText,
+                        period === selectedPeriod && styles.pickerItemTextSelected
+                      ]}>
+                        {period}
+                      </Text>
+                    </View>
+                  ))}
+                  <View style={styles.pickerPadding} />
+                </ScrollView>
+              </View>
+            </View>
+            
+            {/* Random Option Button */}
+            <TouchableOpacity
+              style={styles.randomButton}
+              onPress={handleWorkoutTimeRandom}
+            >
+              <Text style={styles.randomButtonText}>Random / It varies</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -287,17 +492,115 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
-  skipContainer: {
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 107,
-    marginBottom: 24,
   },
-  skipText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: 'rgba(253, 253, 253, 0.6)',
-    textDecorationLine: 'underline',
+  modalContainer: {
+    backgroundColor: '#FDFDFD',
+    borderRadius: 20,
+    width: '85%',
+    maxWidth: 350,
+    paddingBottom: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  modalButton: {
+    padding: 5,
+    minWidth: 60,
+  },
+  modalButtonText: {
+    fontSize: 16,
+    color: '#B7AFC5',
+  },
+  modalConfirmText: {
+    fontWeight: '600',
+    color: '#B7AFC5',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1E2A38',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#1E2A38',
     fontFamily: 'Inter',
-    lineHeight: 20,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    opacity: 0.8,
   },
+  pickerContainer: {
+    flexDirection: 'row',
+    height: 200,
+    position: 'relative',
+    marginTop: 20,
+  },
+  pickerSelectionOverlay: {
+    position: 'absolute',
+    top: '50%',
+    left: 0,
+    right: 0,
+    height: 50,
+    backgroundColor: 'rgba(183, 175, 197, 0.1)',
+    marginTop: -25,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(183, 175, 197, 0.3)',
+    zIndex: 1,
+  },
+  pickerColumn: {
+    flex: 1,
+    height: 200,
+  },
+  pickerScroll: {
+    height: 200,
+  },
+  pickerScrollContent: {
+    paddingVertical: 0,
+  },
+  pickerPadding: {
+    height: 75,
+  },
+  pickerItem: {
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pickerItemText: {
+    fontSize: 20,
+    color: '#8E9AAF',
+    fontWeight: '400',
+  },
+  pickerItemTextSelected: {
+    color: '#B7AFC5',
+    fontWeight: '600',
+  },
+  randomButton: {
+    backgroundColor: '#E5E8EC',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    marginHorizontal: 20,
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  randomButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E2A38',
+    fontFamily: 'Inter',
+  },
+
 });

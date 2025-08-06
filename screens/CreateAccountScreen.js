@@ -174,6 +174,12 @@ export default function CreateAccountScreen({ navigation }) {
       //   }
       // }
       
+      // Temporary: For now, simulate successful account creation and navigate to device selection
+      console.log('Account creation successful (simulated)');
+      if (navigation) {
+        navigation.navigate('ChooseDevice');
+      }
+      
     } catch (error) {
       console.error('Account Creation Error:', error);
       // TODO: Show error message to user based on error type
