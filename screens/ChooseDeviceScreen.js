@@ -186,7 +186,7 @@ export default function ChooseDeviceScreen({ navigation, route }) {
           const deviceName = selectedDevice === 'fitbit' ? 'Fitbit' :
                            selectedDevice === 'oura-ring' ? 'Oura Ring' :
                            selectedDevice === 'garmin' ? 'Garmin' : 'your device';
-          
+
           Alert.alert(
             'Sync with Apple Health',
             `Would you like to sync your ${deviceName} data with Apple Health to improve your nap recommendations?`,
@@ -216,7 +216,7 @@ export default function ChooseDeviceScreen({ navigation, route }) {
           // Navigate to PrecisionPaywallScreen for Apple Watch
           navigation.navigate('PrecisionPaywall');
         } else {
-          // Navigate to NappinAdvancedPaywallNonApple for all other devices
+          // Navigate to Advanced paywall for all other devices in onboarding
           navigation.navigate('NappinAdvancedPaywallNonApple');
         }
       }
@@ -228,7 +228,7 @@ export default function ChooseDeviceScreen({ navigation, route }) {
       // When coming from integrations, skip goes back to Home
       navigation.navigate('Home');
     } else {
-      // Normal onboarding flow
+      // Normal onboarding flow - show advanced paywall
       navigation.navigate('NappinAdvancedPaywallNonApple');
     }
   };
@@ -241,10 +241,6 @@ export default function ChooseDeviceScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Back Button */}
-      <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-        <BackArrowIcon />
-      </TouchableOpacity>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
           {/* Header */}

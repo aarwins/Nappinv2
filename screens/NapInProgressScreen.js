@@ -303,7 +303,7 @@ export default function NapInProgressScreen({ navigation, route }) {
   }, [currentPhase]);
 
   // Advanced Sleep Onset Prediction Algorithm (based on sleep science research)
-  // Range: 2-15 minutes (conservative to avoid long wait times)
+  // Range: 1.5-20 minutes (adjusted to favor longer onset times with 1 min 30 sec minimum)
   const predictSleepOnsetTime = () => {
     const currentHour = new Date().getHours();
     const currentMinute = new Date().getMinutes();
@@ -383,11 +383,12 @@ export default function NapInProgressScreen({ navigation, route }) {
 
     if (userSleepProfile.selfReportedSleepLatency === 0) {
       // User doesn't know - use conservative population average based on difficulty
-      baseLatency = 6 + (userSleepProfile.difficultyFallingAsleep * 0.8); // 6-14 min range
+      baseLatency = 8 + (userSleepProfile.difficultyFallingAsleep * 1.2); // 8-20 min range (increased from 6-14)
       usingSelfReportedLatency = false;
       console.log("User doesn't know sleep latency - using conservative difficulty-based estimate");
     } else {
-      baseLatency = userSleepProfile.selfReportedSleepLatency;
+      // Add buffer to self-reported latency to make it longer
+      baseLatency = userSleepProfile.selfReportedSleepLatency * 1.5;
     }
 
     // 1. DIFFICULTY FALLING ASLEEP ADJUSTMENT (PRIMARY - 25% weight)
@@ -395,13 +396,13 @@ export default function NapInProgressScreen({ navigation, route }) {
     let difficultyMultiplier;
 
     if (usingSelfReportedLatency) {
-      // Normal difficulty adjustment when using self-reported data
-      difficultyMultiplier = 0.5 + (userSleepProfile.difficultyFallingAsleep * 0.15);
-      // Range: 0.65x (easy sleeper) to 2.0x (very difficult sleeper)
+      // Normal difficulty adjustment when using self-reported data - adjusted for longer times
+      difficultyMultiplier = 0.8 + (userSleepProfile.difficultyFallingAsleep * 0.12);
+      // Range: 0.92x (easy sleeper) to 2.0x (very difficult sleeper) - higher baseline
     } else {
-      // Conservative difficulty adjustment for estimated values
-      difficultyMultiplier = 0.9 + (userSleepProfile.difficultyFallingAsleep * 0.03);
-      // Range: 0.93x to 1.2x (very conservative to keep estimates under 15 min)
+      // Conservative difficulty adjustment for estimated values - adjusted for longer times
+      difficultyMultiplier = 1.1 + (userSleepProfile.difficultyFallingAsleep * 0.05);
+      // Range: 1.15x to 1.6x (higher baseline for longer onset times)
     }
 
     // 2. CIRCADIAN ALIGNMENT (PRIMARY - 20% weight)
@@ -461,11 +462,11 @@ export default function NapInProgressScreen({ navigation, route }) {
     }
 
     // Clamp to user-friendly range, but respect very fast self-reported sleepers
-    const minAllowed = usingSelfReportedLatency && userSleepProfile.selfReportedSleepLatency <= 2 
-      ? Math.max(0.5, userSleepProfile.selfReportedSleepLatency * 0.5) // Allow down to half of self-reported for very fast sleepers
-      : 2; // Standard 2-minute minimum for others
+    const minAllowed = usingSelfReportedLatency && userSleepProfile.selfReportedSleepLatency <= 3 
+      ? Math.max(1.5, userSleepProfile.selfReportedSleepLatency * 0.5) // Allow down to half of self-reported for very fast sleepers, minimum 1.5 minutes
+      : 1.5; // Standard 1.5-minute minimum for others (1 min 30 sec)
     
-    predictedMinutes = Math.max(minAllowed, Math.min(15, predictedMinutes));
+    predictedMinutes = Math.max(minAllowed, Math.min(20, predictedMinutes));
 
     console.log(`Advanced Sleep Onset Prediction:
       Base latency ${usingSelfReportedLatency ? '(self-reported)' : '(estimated from difficulty)'}: ${baseLatency.toFixed(1)} min
@@ -511,8 +512,8 @@ export default function NapInProgressScreen({ navigation, route }) {
     // Combine factors (favor ideal nap time more heavily)
     let alignment = (idealProximity * 0.7) + (sleepDistanceBonus * 0.3);
 
-    // Convert to multiplier: 0.6x (poor alignment) to 1.0x (perfect alignment)
-    return 0.6 + (alignment * 0.4);
+    // Convert to multiplier: 0.8x (poor alignment) to 1.0x (perfect alignment) - adjusted for longer times
+    return 0.8 + (alignment * 0.2);
   };
 
   // Ready phase timer - waits for predicted sleep onset

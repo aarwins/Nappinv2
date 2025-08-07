@@ -17,6 +17,8 @@
     "expo": "~53.0.20",
     "expo-av": "^15.1.7",
     "expo-background-fetch": "^13.1.6",
+    "expo-device": "^7.1.4",
+    "expo-keep-awake": "~14.1.4",
     "expo-notifications": "^0.31.4",
     "expo-status-bar": "~2.2.3",
     "react": "19.0.0",
@@ -27,8 +29,7 @@
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
     "react-native-svg": "^15.11.2",
-    "react-native-web": "^0.20.0",
-    "expo-keep-awake": "~14.1.4"
+    "react-native-web": "^0.20.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

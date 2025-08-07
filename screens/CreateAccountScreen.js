@@ -65,7 +65,7 @@ const GoogleIcon = () => (
   </Svg>
 );
 
-export default function CreateAccountScreen({ navigation }) {
+export default function CreateAccountScreen({ navigation, route }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -174,10 +174,18 @@ export default function CreateAccountScreen({ navigation }) {
       //   }
       // }
       
-      // Temporary: For now, simulate successful account creation and navigate to device selection
+      // Temporary: For now, simulate successful account creation and navigate based on flow
       console.log('Account creation successful (simulated)');
       if (navigation) {
-        navigation.navigate('ChooseDevice');
+        // Check if user came from onboarding flow
+        const fromOnboarding = route?.params?.fromOnboarding;
+        if (fromOnboarding) {
+          // User came from personalization -> onboarding -> create account, go to trial offer
+          navigation.navigate('TrialOffer');
+        } else {
+          // User came from other flows (e.g., Account screen), go to device selection
+          navigation.navigate('ChooseDevice');
+        }
       }
       
     } catch (error) {
@@ -201,7 +209,15 @@ export default function CreateAccountScreen({ navigation }) {
   const handleSkip = () => {
     console.log('Skip account creation');
     if (navigation) {
-      navigation.navigate('Home');
+      // Check if user came from onboarding flow
+      const fromOnboarding = route?.params?.fromOnboarding;
+      if (fromOnboarding) {
+        // User came from personalization -> onboarding -> create account, go to trial offer
+        navigation.navigate('TrialOffer');
+      } else {
+        // User came from other flows, go to Home
+        navigation.navigate('Home');
+      }
     }
   };
 

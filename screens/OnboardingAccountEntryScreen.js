@@ -70,7 +70,7 @@ export default function OnboardingAccountEntryScreen({ navigation }) {
     // Navigate to account creation screen
     console.log('Navigate to account creation');
     if (navigation) {
-      navigation.navigate('CreateAccount');
+      navigation.navigate('CreateAccount', { fromOnboarding: true });
     }
   };
 
@@ -83,10 +83,10 @@ export default function OnboardingAccountEntryScreen({ navigation }) {
   };
 
   const handleMaybeLater = () => {
-    // Skip account creation and continue to device selection
+    // Skip account creation and show trial offer
     console.log('Skip account creation');
     if (navigation) {
-      navigation.navigate('ChooseDevice');
+      navigation.navigate('TrialOffer');
     }
   };
 
@@ -156,12 +156,8 @@ export default function OnboardingAccountEntryScreen({ navigation }) {
 
           {/* Account Section */}
           <View style={styles.accountSection}>
-            <Text style={styles.accountTitle}>Want to Save Your Nap Progress?</Text>
 
             <View style={styles.accountContent}>
-              <Text style={styles.accountDescription}>
-                Create a free account to sync your history and settings across devices. Scroll down to skip for now.
-              </Text>
 
               {/* Create Account Button */}
               <TouchableOpacity style={styles.createAccountButton} onPress={handleCreateAccount}>
@@ -241,8 +237,8 @@ const styles = StyleSheet.create({
     color: '#FDFDFD',
     fontFamily: 'Inter',
     textAlign: 'center',
-    lineHeight: 42,
-    marginBottom: 16,
+    lineHeight: 30,
+    marginBottom: 12,
   },
   headerDescription: {
     fontSize: 16,

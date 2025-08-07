@@ -129,7 +129,7 @@ export default function PrecisionPaywallScreen({ navigation, route }) {
   };
 
   const handleMaybeLater = () => {
-    // Handle maybe later - navigate to special offer screen (pass integration flag)
+    // Handle maybe later - navigate to precision special offer screen
     console.log('Maybe later');
     if (navigation) {
       navigation.navigate('SpecialOffer', { fromIntegrations });

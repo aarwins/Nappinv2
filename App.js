@@ -50,6 +50,8 @@ import AppPreferencesScreen from './screens/AppPreferencesScreen';
 import DataAndLegalScreen from './screens/DataAndLegalScreen';
 import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
 import TermsOfUseScreen from './screens/TermsOfUseScreen';
+import TrialOfferScreen from './screens/TrialOfferScreen';
+import TrialNotificationScreen from './screens/TrialNotificationScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -110,6 +112,8 @@ export default function App() {
           <Stack.Screen name="DataAndLegal" component={DataAndLegalScreen} />
           <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
           <Stack.Screen name="TermsOfUse" component={TermsOfUseScreen} />
+          <Stack.Screen name="TrialOffer" component={TrialOfferScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="TrialNotification" component={TrialNotificationScreen} options={{ gestureEnabled: false }} />
         </Stack.Navigator>
       </NavigationContainer>
     </PersonalizationProvider>
