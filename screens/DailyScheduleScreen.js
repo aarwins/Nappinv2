@@ -5,8 +5,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
+  Modal,
 } from 'react-native';
 import { Svg, Path } from 'react-native-svg';
+import TimePickerModal from '../components/TimePickerModal';
 const userPersonalization = require('../utils/userPersonalization');
 
 const BackArrowIcon = () => (
@@ -155,8 +157,28 @@ const scheduleOptions = [
 
 export default function DailyScheduleScreen({ navigation }) {
   const [selectedOptions, setSelectedOptions] = useState([]);
+  const [showBreakTimePopup, setShowBreakTimePopup] = useState(false);
+  const [showTimePickerModal, setShowTimePickerModal] = useState(false);
+  const [showConfirmationPopup, setShowConfirmationPopup] = useState(false);
+  const [breakTime, setBreakTime] = useState('12:00 PM');
 
   const handleOptionSelect = (optionId) => {
+    // Check if this is the 9-5 Job option (id: 2)
+    if (optionId === 2) {
+      // First, handle the selection/deselection immediately
+      setSelectedOptions(prev => {
+        if (prev.includes(optionId)) {
+          // If already selected, remove it (deselect)
+          return prev.filter(id => id !== optionId);
+        } else {
+          // If not selected, add it (select) and show popup
+          setShowBreakTimePopup(true);
+          return [...prev, optionId];
+        }
+      });
+      return;
+    }
+
     setSelectedOptions(prev => {
       if (prev.includes(optionId)) {
         // Remove if already selected
@@ -166,6 +188,38 @@ export default function DailyScheduleScreen({ navigation }) {
         return [...prev, optionId];
       }
     });
+  };
+
+  // Handle break time popup responses
+  const handleBreakTimeYes = () => {
+    setShowBreakTimePopup(false);
+    setShowTimePickerModal(true);
+  };
+
+  const handleBreakTimeNo = () => {
+    setShowBreakTimePopup(false);
+    // Option is already selected, no need to modify selection
+  };
+
+  const handleTimePickerConfirm = (timeString, hour, minute, period) => {
+    setBreakTime(timeString);
+    setShowTimePickerModal(false);
+    
+    // Save break time preference
+    userPersonalization.setBreakTime(timeString);
+    console.log('Break time saved:', timeString);
+    
+    // Show confirmation popup
+    setShowConfirmationPopup(true);
+  };
+
+  const handleConfirmationClose = () => {
+    setShowConfirmationPopup(false);
+    // Option is already selected, no need to modify selection
+  };
+
+  const handleTimePickerClose = () => {
+    setShowTimePickerModal(false);
   };
 
   const handleContinue = () => {
@@ -247,6 +301,73 @@ export default function DailyScheduleScreen({ navigation }) {
           <Text style={styles.continueText}>Continue 5/5</Text>
         </TouchableOpacity>
 
+        {/* Break Time Popup Modal */}
+        <Modal
+          visible={showBreakTimePopup}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowBreakTimePopup(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.popupContainer}>
+              <Text style={styles.popupTitle}>Break Time Napping</Text>
+              <Text style={styles.popupMessage}>
+                Do you plan on napping during your breaks at work?
+              </Text>
+              
+              <View style={styles.popupButtonContainer}>
+                <TouchableOpacity
+                  style={[styles.popupButton, styles.popupButtonNo]}
+                  onPress={handleBreakTimeNo}
+                >
+                  <Text style={styles.popupButtonTextNo}>No</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.popupButton, styles.popupButtonYes]}
+                  onPress={handleBreakTimeYes}
+                >
+                  <Text style={styles.popupButtonTextYes}>Yes</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Time Picker Modal */}
+        <TimePickerModal
+          visible={showTimePickerModal}
+          onClose={handleTimePickerClose}
+          onConfirm={handleTimePickerConfirm}
+          title="Select Break Time"
+          initialHour={12}
+          initialMinute={0}
+          initialPeriod="PM"
+        />
+
+        {/* Confirmation Popup Modal */}
+        <Modal
+          visible={showConfirmationPopup}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={handleConfirmationClose}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.confirmationContainer}>
+              <Text style={styles.confirmationTitle}>Perfect! 🎯</Text>
+              <Text style={styles.confirmationMessage}>
+                We'll use your break time at {breakTime} to personalize your nap recommendations and create the perfect schedule just for you.
+              </Text>
+              
+              <TouchableOpacity
+                style={styles.confirmationButton}
+                onPress={handleConfirmationClose}
+              >
+                <Text style={styles.confirmationButtonText}>Got it!</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
 
       </View>
     </SafeAreaView>
@@ -351,6 +472,114 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.25)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  popupContainer: {
+    backgroundColor: '#FDFDFD',
+    borderRadius: 20,
+    padding: 24,
+    width: '85%',
+    maxWidth: 350,
+    alignItems: 'center',
+  },
+  popupTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1E2A38',
+    textAlign: 'center',
+    marginBottom: 12,
+    fontFamily: 'Inter',
+  },
+  popupMessage: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#1E2A38',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 24,
+    fontFamily: 'Inter',
+  },
+  popupButtonContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  popupButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  popupButtonNo: {
+    backgroundColor: '#E5E8EC',
+  },
+  popupButtonYes: {
+    backgroundColor: '#B7AFC5',
+  },
+  popupButtonTextNo: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E2A38',
+    fontFamily: 'Inter',
+  },
+  popupButtonTextYes: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FDFDFD',
+    fontFamily: 'Inter',
+  },
+  // Confirmation popup styles
+  confirmationContainer: {
+    backgroundColor: '#FDFDFD',
+    borderRadius: 20,
+    padding: 28,
+    width: '85%',
+    maxWidth: 350,
+    alignItems: 'center',
+  },
+  confirmationTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1E2A38',
+    textAlign: 'center',
+    marginBottom: 16,
+    fontFamily: 'Inter',
+  },
+  confirmationMessage: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#1E2A38',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 24,
+    fontFamily: 'Inter',
+  },
+  confirmationButton: {
+    backgroundColor: '#B7AFC5',
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#B7AFC5',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  confirmationButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FDFDFD',
+    fontFamily: 'Inter',
   },
 
 });

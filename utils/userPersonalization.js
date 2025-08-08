@@ -38,7 +38,10 @@ class UserPersonalizationManager {
       overallReadiness: 0,
       
       // Activity-based data
-      workoutTime: null
+      workoutTime: null,
+      
+      // Break time preference for 9-5 workers
+      breakTime: null
     };
   }
 
@@ -51,6 +54,12 @@ class UserPersonalizationManager {
   setWorkoutTime(workoutTime) {
     this.userProfile.workoutTime = workoutTime;
     console.log('Workout time set to:', workoutTime);
+  }
+
+  setBreakTime(breakTime) {
+    this.userProfile.breakTime = breakTime;
+    console.log('Break time set to:', breakTime);
+    this.recalculateReadiness();
   }
 
   setWellnessFocus(focus) {
@@ -210,17 +219,30 @@ class UserPersonalizationManager {
         case '9to5':
         case 'traditional':
           if (isWeekday) {
-            // During work hours (9-5) - lower readiness
-            if (currentTime >= 9 && currentTime <= 17) {
-              timeScore = Math.max(timeScore * 0.3, 20); // Significantly reduce
+            // Check for custom break time boost first
+            let breakTimeBoostApplied = false;
+            if (this.userProfile.breakTime) {
+              const breakTimeBoost = this.calculateBreakTimeBoost(currentTime, currentMinute);
+              if (breakTimeBoost > 0) {
+                timeScore = Math.min(timeScore + breakTimeBoost, 100);
+                breakTimeBoostApplied = true;
+              }
             }
-            // After work (5+ PM) - boost readiness
-            else if (currentTime >= 17 && currentTime <= 20) {
-              timeScore = Math.min(timeScore + 30, 100);
-            }
-            // Lunch break (12-1 PM) - moderate boost
-            else if (currentTime >= 12 && currentTime <= 13) {
-              timeScore = Math.min(timeScore + 15, 90);
+            
+            // Only apply other work hour adjustments if break time boost wasn't applied
+            if (!breakTimeBoostApplied) {
+              // During work hours (9-5) - lower readiness
+              if (currentTime >= 9 && currentTime <= 17) {
+                timeScore = Math.max(timeScore * 0.3, 20); // Significantly reduce
+              }
+              // After work (5+ PM) - boost readiness
+              else if (currentTime >= 17 && currentTime <= 20) {
+                timeScore = Math.min(timeScore + 30, 100);
+              }
+              // Lunch break (12-1 PM) - moderate boost
+              else if (currentTime >= 12 && currentTime <= 13) {
+                timeScore = Math.min(timeScore + 15, 90);
+              }
             }
           }
           // Weekends - normal scoring
@@ -383,6 +405,46 @@ class UserPersonalizationManager {
 
     console.log('Final time score before clamp:', timeScore);
     return Math.max(10, Math.min(100, timeScore));
+  }
+
+  // Break Time Boost Calculation
+  calculateBreakTimeBoost(currentTime, currentMinute) {
+    if (!this.userProfile.breakTime) {
+      return 0;
+    }
+
+    // Parse the break time (format: "12:30 PM")
+    const breakTimeMatch = this.userProfile.breakTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (!breakTimeMatch) {
+      return 0;
+    }
+
+    let breakHour = parseInt(breakTimeMatch[1]);
+    const breakMinute = parseInt(breakTimeMatch[2]);
+    const period = breakTimeMatch[3].toUpperCase();
+
+    // Convert to 24-hour format
+    if (period === 'PM' && breakHour !== 12) {
+      breakHour += 12;
+    } else if (period === 'AM' && breakHour === 12) {
+      breakHour = 0;
+    }
+
+    // Convert current time and break time to minutes for easier comparison
+    const currentTotalMinutes = currentTime * 60 + currentMinute;
+    const breakTotalMinutes = breakHour * 60 + breakMinute;
+
+    // Boost window: 15 minutes before to 45 minutes after break time (60 minute total window)
+    const boostStartMinutes = breakTotalMinutes - 15;
+    const boostEndMinutes = breakTotalMinutes + 45;
+
+    // Check if current time is within the boost window
+    if (currentTotalMinutes >= boostStartMinutes && currentTotalMinutes <= boostEndMinutes) {
+      console.log(`🍃 Break time boost applied! Break: ${this.userProfile.breakTime}, Current: ${currentTime}:${currentMinute.toString().padStart(2, '0')}`);
+      return 30; // 30-point boost
+    }
+
+    return 0;
   }
 
   calculateCircadianAlignment() {

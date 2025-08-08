@@ -18,14 +18,12 @@ const TimePickerModal = ({
   initialPeriod = "PM"
 }) => {
   const [selectedHour, setSelectedHour] = useState(initialHour);
-  const [selectedMinute, setSelectedMinute] = useState(
-    initialMinute >= 30 ? 30 : 0 // Snap to nearest valid minute
-  );
+  const [selectedMinute, setSelectedMinute] = useState(initialMinute);
   const [selectedPeriod, setSelectedPeriod] = useState(initialPeriod);
 
   // Create time options
   const hours = Array.from({ length: 12 }, (_, i) => i + 1);
-  const minutes = [0, 30]; // Only 0 and 30 minutes
+  const minutes = Array.from({ length: 60 }, (_, i) => i); // All minutes 0-59
   const periods = ['AM', 'PM'];
 
   const hourScrollRef = useRef(null);
@@ -72,8 +70,7 @@ const TimePickerModal = ({
       setTimeout(() => {
         // Set scroll positions based on initial values
         const hourIndex = hours.indexOf(initialHour);
-        const snappedMinute = initialMinute >= 30 ? 30 : 0;
-        const minuteIndex = minutes.indexOf(snappedMinute);
+        const minuteIndex = minutes.indexOf(initialMinute);
         const periodIndex = periods.indexOf(initialPeriod);
 
         if (hourScrollRef.current && hourIndex >= 0) {
