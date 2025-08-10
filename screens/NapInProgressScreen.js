@@ -303,7 +303,9 @@ export default function NapInProgressScreen({ navigation, route }) {
   }, [currentPhase]);
 
   // Advanced Sleep Onset Prediction Algorithm (based on sleep science research)
-  // Range: 1.5-20 minutes (adjusted to favor longer onset times with 1 min 30 sec minimum)
+  // Range: 1.5–30 minutes
+  // Note: Predictions over 20 minutes are ONLY allowed when the user self-reports
+  // a sleep latency of at least 20 minutes. Otherwise, we cap at 20 minutes.
   const predictSleepOnsetTime = () => {
     const currentHour = new Date().getHours();
     const currentMinute = new Date().getMinutes();
@@ -461,12 +463,17 @@ export default function NapInProgressScreen({ navigation, route }) {
       predictedMinutes *= 0.9;
     }
 
-    // Clamp to user-friendly range, but respect very fast self-reported sleepers
+    // Clamp range
+    // - Minimum: 1.5 minutes (or half of self-report for very fast sleepers)
+    // - Maximum: 30 minutes ONLY if the user self-reported latency >= 20 minutes
     const minAllowed = usingSelfReportedLatency && userSleepProfile.selfReportedSleepLatency <= 3 
-      ? Math.max(1.5, userSleepProfile.selfReportedSleepLatency * 0.5) // Allow down to half of self-reported for very fast sleepers, minimum 1.5 minutes
-      : 1.5; // Standard 1.5-minute minimum for others (1 min 30 sec)
-    
-    predictedMinutes = Math.max(minAllowed, Math.min(20, predictedMinutes));
+      ? Math.max(1.5, userSleepProfile.selfReportedSleepLatency * 0.5)
+      : 1.5;
+
+    const allowHighLatency = usingSelfReportedLatency && userSleepProfile.selfReportedSleepLatency >= 20;
+    const maxAllowed = allowHighLatency ? 30 : 20;
+
+    predictedMinutes = Math.max(minAllowed, Math.min(maxAllowed, predictedMinutes));
 
     console.log(`Advanced Sleep Onset Prediction:
       Base latency ${usingSelfReportedLatency ? '(self-reported)' : '(estimated from difficulty)'}: ${baseLatency.toFixed(1)} min
@@ -478,6 +485,7 @@ export default function NapInProgressScreen({ navigation, route }) {
       Plan adjustment (${userPlan}): ${userPlan === 'advanced' ? '0.9x' : '1.0x'}
       Calculated result: ${(baseLatency * difficultyMultiplier * circadianAlignment * scheduleMultiplier * stressMultiplier * napInterferenceMultiplier * (userPlan === 'advanced' ? 0.9 : 1.0)).toFixed(1)} min
       Minimum allowed: ${minAllowed.toFixed(1)} min
+      Max allowed: ${maxAllowed} min
       Final prediction: ${predictedMinutes.toFixed(1)} minutes`);
 
     return Math.round(predictedMinutes);
