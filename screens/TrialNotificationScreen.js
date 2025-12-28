@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,13 @@ import {
 import { Svg, Path, G, Defs, ClipPath, Line } from 'react-native-svg';
 import notificationManager from '../utils/notificationManager';
 import trialManager from '../utils/trialManager';
+import { supabase } from '../utils/supabase';
+import {
+  fetchActiveProducts,
+  getProductBySku,
+  formatPrice,
+  formatMonthlyEquivalent,
+} from '../utils/subscriptions/products';
 
 // Back arrow icon for header
 const BackArrowIcon = () => (
@@ -57,6 +64,23 @@ const RightArrowIcon = () => (
 
 export default function TrialNotificationScreen({ navigation }) {
   const [isLoading, setIsLoading] = useState(false);
+  const [yearlyProduct, setYearlyProduct] = useState(null);
+
+  // Fetch subscription products from backend on mount
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        const allProducts = await fetchActiveProducts(supabase);
+        // Get advanced yearly product for pricing display
+        const product = getProductBySku(allProducts, 'advanced_yearly');
+        setYearlyProduct(product);
+      } catch (error) {
+        console.error('[TrialNotificationScreen] Error loading products:', error);
+      }
+    };
+
+    loadProducts();
+  }, []);
 
   const handleBack = () => {
     if (navigation) {
@@ -169,9 +193,15 @@ export default function TrialNotificationScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          {/* Pricing text - matching trial offer */}
+          {/* Pricing text - matching trial offer, loaded from backend */}
           <View style={styles.pricingSection}>
-            <Text style={styles.pricingText}>Then $24.99 per year (≈ $2.08/mo)</Text>
+            {yearlyProduct ? (
+              <Text style={styles.pricingText}>
+                Then {formatPrice(yearlyProduct.price_cents, yearlyProduct.currency)} per year (≈ {formatMonthlyEquivalent(yearlyProduct.price_cents, yearlyProduct.currency)}/mo)
+              </Text>
+            ) : (
+              <Text style={styles.pricingText}>Loading pricing...</Text>
+            )}
           </View>
         </View>
 

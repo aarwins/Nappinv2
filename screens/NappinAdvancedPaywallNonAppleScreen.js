@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,8 +6,15 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { Svg, Path, G, Defs, ClipPath } from 'react-native-svg';
+import {
+  fetchProductsForDevice,
+  formatPrice,
+  formatTrial,
+} from '../services/subscriptionProductsService';
+import { Alert } from 'react-native';
 
 const BackArrowIcon = () => (
   <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
@@ -86,6 +93,30 @@ const PricingOption = ({ title, price, trial, isSelected, onPress, showBadge = f
 
 export default function NappinAdvancedPaywallNonAppleScreen({ navigation }) {
   const [selectedPlan, setSelectedPlan] = useState('yearly');
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch subscription products from backend on mount
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        setLoading(true);
+        // Fetch products for non_watch device type (Advanced plans)
+        const fetchedProducts = await fetchProductsForDevice('non_watch');
+        setProducts(fetchedProducts);
+      } catch (error) {
+        console.error('[NappinAdvancedPaywallNonAppleScreen] Error loading products:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProducts();
+  }, []);
+
+  // Get the selected product based on selectedPlan
+  const yearlyProduct = products.find((p) => p.sku === 'advanced_yearly');
+  const monthlyProduct = products.find((p) => p.sku === 'advanced_monthly');
 
   const handleBack = () => {
     if (navigation) {
@@ -103,8 +134,11 @@ export default function NappinAdvancedPaywallNonAppleScreen({ navigation }) {
   };
 
   const handleRestorePurchase = () => {
-    // Handle restore purchase
-    console.log('Restore purchase');
+    // TODO: Implement restore via Edge Function restore-subscription when StoreKit is configured
+    Alert.alert(
+      'Restore Purchase',
+      'Restore is not available in Simulator unless StoreKit test config is set up. If you have no purchases, nothing will happen.'
+    );
   };
 
   const handleNoThanks = () => {
@@ -158,27 +192,42 @@ export default function NappinAdvancedPaywallNonAppleScreen({ navigation }) {
             </FeatureItem>
           </View>
 
-          {/* Pricing Options */}
-          <View style={styles.pricingContainer}>
-            <PricingOption
-              title="1 Year"
-              price="$24.99 / yr"
-              monthlyEquivalent="$2.08 / mo"
-              originalYearlyPrice="$24.99"
-              trial="7-day free trial"
-              isSelected={selectedPlan === 'yearly'}
-              onPress={() => setSelectedPlan('yearly')}
-              showBadge={true}
-            />
+          {/* Pricing Options - Loaded from backend */}
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Loading pricing...</Text>
+              <ActivityIndicator size="small" color="#B7AFC5" style={{ marginTop: 8 }} />
+            </View>
+          ) : products.length > 0 ? (
+            <View style={styles.pricingContainer}>
+              {yearlyProduct && (
+                <PricingOption
+                  title="1 Year"
+                  price={`${formatPrice(yearlyProduct.price_cents, yearlyProduct.currency)} / yr`}
+                  monthlyEquivalent={`${formatPrice(Math.round(yearlyProduct.price_cents / 12), yearlyProduct.currency)} / mo`}
+                  originalYearlyPrice={formatPrice(yearlyProduct.price_cents, yearlyProduct.currency)}
+                  trial={formatTrial(yearlyProduct.trial_days)}
+                  isSelected={selectedPlan === 'yearly'}
+                  onPress={() => setSelectedPlan('yearly')}
+                  showBadge={true}
+                />
+              )}
 
-            <PricingOption
-              title="1 Month"
-              price="$3.99 / mo"
-              trial="3-day free trial"
-              isSelected={selectedPlan === 'monthly'}
-              onPress={() => setSelectedPlan('monthly')}
-            />
-          </View>
+              {monthlyProduct && (
+                <PricingOption
+                  title="1 Month"
+                  price={`${formatPrice(monthlyProduct.price_cents, monthlyProduct.currency)} / mo`}
+                  trial={formatTrial(monthlyProduct.trial_days)}
+                  isSelected={selectedPlan === 'monthly'}
+                  onPress={() => setSelectedPlan('monthly')}
+                />
+              )}
+            </View>
+          ) : (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>No pricing available</Text>
+            </View>
+          )}
 
           {/* Continue Button */}
           <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
@@ -461,5 +510,15 @@ const styles = StyleSheet.create({
   footerLink: {
     color: '#B7AFC5',
     textDecorationLine: 'underline',
+  },
+  loadingContainer: {
+    paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#B7AFC5',
+    marginBottom: 8,
   },
 });

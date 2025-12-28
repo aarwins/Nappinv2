@@ -137,13 +137,20 @@ class UserPersonalizationManager {
     this.userProfile.sleeperType = type;
   }
 
+  // Helper to get current minutes since midnight
+  getCurrentMinutesSinceMidnight() {
+    const now = this.debugTimeOverride ? new Date(this.debugTimeOverride) : new Date();
+    return now.getHours() * 60 + now.getMinutes();
+  }
+
   // Readiness Calculation Methods
-  calculateTimeBasedReadiness() {
+  calculateTimeBasedReadiness(currentMinuteParam = null) {
     // Use debug time override if set, otherwise use real time
     const now = this.debugTimeOverride ? new Date(this.debugTimeOverride) : new Date();
     const currentHour = now.getHours();
     const currentMinutes = now.getMinutes();
     const currentTime = currentHour + currentMinutes / 60;
+    const currentMinute = currentMinuteParam ?? this.getCurrentMinutesSinceMidnight();
     const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
     const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
 
@@ -222,7 +229,7 @@ class UserPersonalizationManager {
             // Check for custom break time boost first
             let breakTimeBoostApplied = false;
             if (this.userProfile.breakTime) {
-              const breakTimeBoost = this.calculateBreakTimeBoost(currentTime, currentMinute);
+              const breakTimeBoost = this.calculateBreakTimeBoost(currentMinute);
               if (breakTimeBoost > 0) {
                 timeScore = Math.min(timeScore + breakTimeBoost, 100);
                 breakTimeBoostApplied = true;
@@ -408,7 +415,7 @@ class UserPersonalizationManager {
   }
 
   // Break Time Boost Calculation
-  calculateBreakTimeBoost(currentTime, currentMinute) {
+  calculateBreakTimeBoost(currentMinute) {
     if (!this.userProfile.breakTime) {
       return 0;
     }
@@ -430,8 +437,7 @@ class UserPersonalizationManager {
       breakHour = 0;
     }
 
-    // Convert current time and break time to minutes for easier comparison
-    const currentTotalMinutes = currentTime * 60 + currentMinute;
+    // Convert break time to total minutes since midnight
     const breakTotalMinutes = breakHour * 60 + breakMinute;
 
     // Boost window: 15 minutes before to 45 minutes after break time (60 minute total window)
@@ -439,8 +445,10 @@ class UserPersonalizationManager {
     const boostEndMinutes = breakTotalMinutes + 45;
 
     // Check if current time is within the boost window
-    if (currentTotalMinutes >= boostStartMinutes && currentTotalMinutes <= boostEndMinutes) {
-      console.log(`🍃 Break time boost applied! Break: ${this.userProfile.breakTime}, Current: ${currentTime}:${currentMinute.toString().padStart(2, '0')}`);
+    if (currentMinute >= boostStartMinutes && currentMinute <= boostEndMinutes) {
+      const currentHour = Math.floor(currentMinute / 60);
+      const currentMinuteComponent = currentMinute % 60;
+      console.log(`🍃 Break time boost applied! Break: ${this.userProfile.breakTime}, Current: ${currentHour}:${currentMinuteComponent.toString().padStart(2, '0')}`);
       return 30; // 30-point boost
     }
 
@@ -832,7 +840,8 @@ class UserPersonalizationManager {
 
   recalculateReadiness() {
     // Calculate individual factors
-    this.userProfile.timeBasedReadiness = this.calculateTimeBasedReadiness();
+    const currentMinute = this.getCurrentMinutesSinceMidnight();
+    this.userProfile.timeBasedReadiness = this.calculateTimeBasedReadiness(currentMinute);
     this.userProfile.circadianAlignment = this.calculateCircadianAlignment();
     this.userProfile.personalFactors = this.calculatePersonalFactors();
 

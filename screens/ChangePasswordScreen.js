@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,11 +10,12 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { Svg, Path, G, Defs, ClipPath } from 'react-native-svg';
-import { usePersonalization } from '../components/PersonalizationProvider';
+import { supabase } from '../utils/supabase';
 
-// Back arrow icon for header (same as AccountScreen)
+// Back arrow icon for header
 const BackArrowIcon = () => (
   <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
     <Path
@@ -24,7 +25,7 @@ const BackArrowIcon = () => (
   </Svg>
 );
 
-// Bottom navigation icons (same as AccountScreen)
+// Bottom navigation icons
 const HomeIcon = () => (
   <Svg width={20} height={20} viewBox="0 0 20 20" fill="none">
     <Path
@@ -74,11 +75,32 @@ const ProfileIcon = () => (
 );
 
 export default function ChangePasswordScreen({ navigation }) {
-  const { changePassword } = usePersonalization();
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [errorOldPassword, setErrorOldPassword] = useState('');
+  const [errorNewPassword, setErrorNewPassword] = useState('');
+  const [errorConfirmPassword, setErrorConfirmPassword] = useState('');
+  const [generalError, setGeneralError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // Fetch current user to get email for password verification
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        if (error) {
+          console.warn('[ChangePassword] getUser error:', error);
+        } else {
+          setCurrentUser(data?.user ?? null);
+        }
+      } catch (err) {
+        console.error('[ChangePassword] Unexpected getUser error:', err);
+      }
+    };
+    fetchUser();
+  }, []);
 
   const handleBackPress = () => {
     navigation.goBack();
@@ -87,44 +109,90 @@ export default function ChangePasswordScreen({ navigation }) {
   const handleSave = async () => {
     // Dismiss keyboard
     Keyboard.dismiss();
-    
-    // Basic validation
-    if (!oldPassword || !newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all password fields.');
+
+    // Clear all previous errors
+    setErrorOldPassword('');
+    setErrorNewPassword('');
+    setErrorConfirmPassword('');
+    setGeneralError('');
+
+    let hasError = false;
+
+    // Validate old password
+    if (!oldPassword || oldPassword.trim().length === 0) {
+      setErrorOldPassword('Please enter your current password.');
+      hasError = true;
+    }
+
+    // Validate new password length
+    if (!newPassword || newPassword.length < 6) {
+      setErrorNewPassword('Password must be at least 6 characters.');
+      hasError = true;
+    }
+
+    // Validate confirm password
+    if (!confirmPassword) {
+      setErrorConfirmPassword('Please confirm your password.');
+      hasError = true;
+    } else if (newPassword !== confirmPassword) {
+      setErrorConfirmPassword("Passwords don't match.");
+      hasError = true;
+    }
+
+    // If validation failed, do not hit Supabase
+    if (hasError) {
       return;
     }
 
-    if (newPassword.length < 5 || newPassword.length > 20) {
-      Alert.alert('Error', 'New password must be 5–20 characters.');
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'New password and confirmation do not match.');
-      return;
-    }
-
+    // Additional check: new password should be different from old
     if (oldPassword === newPassword) {
-      Alert.alert('Error', 'New password must be different from your current password.');
+      setErrorNewPassword('New password must be different from your current password.');
       return;
     }
 
-    setIsLoading(true);
-    
+    if (!currentUser?.email) {
+      setGeneralError('No user is logged in.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
     try {
-      await changePassword(oldPassword, newPassword);
-      Alert.alert('Success', 'Password changed successfully!', [
-        { text: 'OK', onPress: () => navigation.goBack() }
-      ]);
-    } catch (error) {
-      if (error.message === 'Current password is incorrect') {
-        Alert.alert('Error', 'The current password you entered is incorrect.');
-      } else {
-        Alert.alert('Error', 'Failed to change password. Please try again.');
+      // First, verify the old password by attempting to sign in
+      const { error: verifyError } = await supabase.auth.signInWithPassword({
+        email: currentUser.email,
+        password: oldPassword,
+      });
+
+      if (verifyError) {
+        console.error('[ChangePassword] Old password verification failed:', verifyError);
+        setErrorOldPassword('Current password is incorrect.');
+        return;
       }
-      console.error('Error changing password:', error);
+
+      // Old password is correct, now update to new password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) {
+        console.error('[ChangePassword] Password update error:', updateError);
+        setGeneralError('Could not update your password. Please try again.');
+        return;
+      }
+
+      // Success - show alert and clear fields
+      Alert.alert('Success', 'Password updated successfully!');
+      
+      // Clear all fields
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      console.error('[ChangePassword] Unexpected error:', err);
+      setGeneralError('Something went wrong updating your password. Please try again.');
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -148,9 +216,6 @@ export default function ChangePasswordScreen({ navigation }) {
     navigation.navigate('Profile');
   };
 
-  const isSaveEnabled = !isLoading && oldPassword && newPassword && confirmPassword && 
-    newPassword.length >= 5 && newPassword.length <= 20 && newPassword === confirmPassword;
-
   return (
     <SafeAreaView style={styles.container}>
       <TouchableWithoutFeedback onPress={dismissKeyboard}>
@@ -163,66 +228,96 @@ export default function ChangePasswordScreen({ navigation }) {
             <Text style={styles.headerTitle}>Change Password</Text>
           </View>
 
-        {/* Old Password Field */}
-        <View style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>Old Password</Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              value={oldPassword}
-              onChangeText={setOldPassword}
-              placeholder="Password"
-              placeholderTextColor="#ADAEBC"
-              secureTextEntry
-              autoCapitalize="none"
-            />
+          {/* Old Password Card */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Old Password</Text>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                value={oldPassword}
+                onChangeText={(text) => {
+                  setOldPassword(text);
+                  if (errorOldPassword) setErrorOldPassword('');
+                  if (generalError) setGeneralError('');
+                }}
+                placeholder="Password"
+                placeholderTextColor="#ADAEBC"
+                secureTextEntry
+                autoCapitalize="none"
+              />
+            </View>
+            {errorOldPassword ? (
+              <Text style={styles.errorText}>{errorOldPassword}</Text>
+            ) : null}
           </View>
-          <Text style={styles.helperText}>Must be 5–20 characters.</Text>
-        </View>
 
-        {/* New Password Field */}
-        <View style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>New Password</Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              value={newPassword}
-              onChangeText={setNewPassword}
-              placeholder="New Password"
-              placeholderTextColor="#ADAEBC"
-              secureTextEntry
-              autoCapitalize="none"
-            />
-          </View>
-          <Text style={styles.helperText}>Must be 5–20 characters.</Text>
-        </View>
+          {/* New Password / Confirm New Password Card */}
+          <View style={styles.fieldContainer}>
+            {/* New Password Field */}
+            <Text style={styles.fieldLabel}>New Password</Text>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                value={newPassword}
+                onChangeText={(text) => {
+                  setNewPassword(text);
+                  if (errorNewPassword) setErrorNewPassword('');
+                  if (generalError) setGeneralError('');
+                }}
+                placeholder="New Password"
+                placeholderTextColor="#ADAEBC"
+                secureTextEntry
+                autoCapitalize="none"
+              />
+            </View>
+            <Text style={styles.helperText}>Password must be 6+ characters</Text>
+            {errorNewPassword ? (
+              <Text style={styles.errorText}>{errorNewPassword}</Text>
+            ) : null}
 
-        {/* Confirm New Password Field */}
-        <View style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>Confirm New Password</Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              placeholder="New Password"
-              placeholderTextColor="#ADAEBC"
-              secureTextEntry
-              autoCapitalize="none"
-            />
+            {/* Confirm New Password Field */}
+            <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Confirm New Password</Text>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                value={confirmPassword}
+                onChangeText={(text) => {
+                  setConfirmPassword(text);
+                  if (errorConfirmPassword) setErrorConfirmPassword('');
+                  if (generalError) setGeneralError('');
+                }}
+                placeholder="New Password"
+                placeholderTextColor="#ADAEBC"
+                secureTextEntry
+                autoCapitalize="none"
+              />
+            </View>
+            {errorConfirmPassword ? (
+              <Text style={styles.errorText}>{errorConfirmPassword}</Text>
+            ) : null}
           </View>
-          <Text style={styles.helperText}>Must be 5–20 characters.</Text>
-        </View>
+
+          {/* General Error Message */}
+          {generalError ? (
+            <View style={styles.generalErrorContainer}>
+              <Text style={styles.errorText}>{generalError}</Text>
+            </View>
+          ) : null}
 
           {/* Save Button */}
-          <TouchableOpacity 
-            style={[styles.saveButton, !isSaveEnabled && styles.saveButtonDisabled]} 
+          <TouchableOpacity
+            style={[styles.saveButton, isSubmitting && styles.saveButtonDisabled]}
             onPress={handleSave}
-            disabled={!isSaveEnabled}
+            disabled={isSubmitting}
           >
-            <Text style={[styles.saveButtonText, !isSaveEnabled && styles.saveButtonTextDisabled]}>
-              {isLoading ? 'Saving...' : 'Save'}
-            </Text>
+            {isSubmitting ? (
+              <>
+                <ActivityIndicator color="#FDFDFD" style={{ marginRight: 8 }} />
+                <Text style={styles.saveButtonText}>Saving…</Text>
+              </>
+            ) : (
+              <Text style={styles.saveButtonText}>Save</Text>
+            )}
           </TouchableOpacity>
         </ScrollView>
       </TouchableWithoutFeedback>
@@ -272,9 +367,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 50, // More space to avoid back button overlap
+    paddingHorizontal: 50,
     paddingVertical: 12,
-    height: 56, // Increased height
+    height: 56,
     marginBottom: 8,
   },
   backButton: {
@@ -288,7 +383,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: '#FDFDFD',
     fontFamily: 'Inter',
-    fontSize: 18, // Reduced from 20 to prevent cutoff
+    fontSize: 18,
     fontWeight: '700',
     lineHeight: 24,
     textAlign: 'center',
@@ -299,7 +394,6 @@ const styles = StyleSheet.create({
     padding: 16,
     marginHorizontal: 16,
     marginTop: 12,
-    height: 140,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -343,6 +437,24 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     lineHeight: 16,
     opacity: 0.6,
+    marginBottom: 8,
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontFamily: 'Inter',
+    fontSize: 13,
+    fontWeight: '400',
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  generalErrorContainer: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 59, 48, 0.3)',
   },
   saveButton: {
     backgroundColor: '#B7AFC5',
@@ -352,8 +464,17 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 22,
     height: 56,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: 'rgba(183, 175, 197, 0.30)',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 1,
+    shadowRadius: 14,
+    elevation: 8,
   },
   saveButtonText: {
     color: '#FDFDFD',
@@ -365,6 +486,9 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.25)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
+  },
+  saveButtonDisabled: {
+    backgroundColor: 'rgba(183, 175, 197, 0.5)',
   },
   bottomNavigation: {
     backgroundColor: '#1E2A38',
@@ -401,11 +525,5 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter',
     fontSize: 12,
     fontWeight: '400',
-  },
-  saveButtonDisabled: {
-    backgroundColor: 'rgba(183, 175, 197, 0.5)',
-  },
-  saveButtonTextDisabled: {
-    color: 'rgba(253, 253, 253, 0.6)',
   },
 });

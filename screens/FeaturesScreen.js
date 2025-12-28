@@ -328,14 +328,19 @@ const styles = StyleSheet.create({
   featuresSection: {
     paddingHorizontal: 16,
     paddingTop: 16,
+    paddingBottom: 40, // ✅ add bottom padding for spacing after buttons
+    alignItems: 'center', // ✅ center the grid section
   },
   featuresGrid: {
     width: '100%',
+    maxWidth: 390, // ✅ limit max width
+    alignItems: 'center', // ✅ center grid contents
   },
   gridRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center', // ✅ center buttons instead of space-between
     marginBottom: 16,
+    alignItems: 'center', // ✅ center align items vertically
   },
   featureCard: {
     width: 168,
@@ -346,6 +351,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 24,
     paddingHorizontal: 24,
+    marginHorizontal: 6, // ✅ 12px total spacing between buttons (6px on each side)
   },
   iconContainer: {
     marginBottom: 14,
@@ -362,9 +368,10 @@ const styles = StyleSheet.create({
   },
   bottomContent: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-end', // ✅ keep content at bottom
     alignItems: 'center',
-    paddingBottom: 50, // Space for bottom navigation
+    paddingBottom: 70, // ✅ reduced spacing above bottom navigation to move content up
+    paddingTop: 0, // ✅ remove top padding since featuresSection has paddingBottom
   },
   subtitle: {
     color: 'rgba(255, 255, 255, 0.75)',

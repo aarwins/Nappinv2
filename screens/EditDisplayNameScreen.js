@@ -7,9 +7,11 @@ import {
   SafeAreaView,
   TextInput,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Svg, Path, G, Defs, ClipPath } from 'react-native-svg';
 import { usePersonalization } from '../components/PersonalizationProvider';
+import { supabase } from '../utils/supabase';
 
 // Back arrow icon for header
 const BackArrowIcon = () => (
@@ -22,14 +24,37 @@ const BackArrowIcon = () => (
 );
 
 export default function EditDisplayNameScreen({ navigation }) {
-  const { userName, userEmail, updateUserInfo, updateUserName } = usePersonalization();
+  const { userName, userEmail, updateUserName } = usePersonalization();
   const [displayName, setDisplayName] = useState(userName || '');
   const [isValid, setIsValid] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
 
+  // Fetch current user from Supabase to get initial display name
   useEffect(() => {
-    // Initialize with current user name
-    setDisplayName(userName || '');
-  }, [userName]);
+    const fetchUser = async () => {
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        if (error) {
+          console.warn('[EditDisplayName] getUser error:', error);
+        } else {
+          setCurrentUser(data?.user ?? null);
+          // Initialize with current user's display name from Supabase
+          const userDisplayName =
+            data?.user?.user_metadata?.full_name ||
+            data?.user?.user_metadata?.name ||
+            data?.user?.user_metadata?.display_name ||
+            userName ||
+            '';
+          setDisplayName(userDisplayName);
+        }
+      } catch (err) {
+        console.error('[EditDisplayName] Unexpected getUser error:', err);
+      }
+    };
+
+    fetchUser();
+  }, []);
 
   useEffect(() => {
     // Validate name length (2-30 characters)
@@ -42,26 +67,63 @@ export default function EditDisplayNameScreen({ navigation }) {
   };
 
   const handleSave = async () => {
-    const trimmedName = displayName.trim();
-    
-    if (trimmedName.length < 2 || trimmedName.length > 30) {
-      Alert.alert('Invalid Name', 'Display name must be 2–30 characters.');
+    const trimmed = displayName.trim();
+
+    if (trimmed.length < 2 || trimmed.length > 30) {
+      Alert.alert('Invalid Name', 'Display name must be between 2 and 30 characters.');
       return;
     }
 
+    if (!currentUser?.id) {
+      Alert.alert('Error', 'No user is logged in.');
+      return;
+    }
+
+    setIsSaving(true);
+
     try {
-      await updateUserName(trimmedName);
-      // Show success message briefly, then navigate back
+      // Update in Supabase user metadata
+      const { data, error } = await supabase.auth.updateUser({
+        data: {
+          display_name: trimmed,
+          full_name: trimmed, // Also update full_name for backwards compatibility
+        },
+      });
+
+      if (error) {
+        console.error('[EditDisplayName] Error updating display name:', error);
+        Alert.alert('Error', 'Could not update your name. Please try again.');
+        return;
+      }
+
+      // Update local state for backwards compatibility
+      if (updateUserName) {
+        await updateUserName(trimmed);
+      }
+
+      // Show success message and navigate back
       Alert.alert('Success', 'Display name updated successfully!', [
-        { text: 'OK', onPress: () => navigation.goBack() }
+        {
+          text: 'OK',
+          onPress: () => navigation.goBack(),
+        },
       ]);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to update display name. Please try again.');
-      console.error('Error updating display name:', error);
+    } catch (err) {
+      console.error('[EditDisplayName] Unexpected error:', err);
+      Alert.alert('Error', 'Something went wrong. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const isSaveEnabled = isValid && displayName.trim().length >= 2 && displayName.trim() !== userName;
+  const currentDisplayName =
+    currentUser?.user_metadata?.full_name ||
+    currentUser?.user_metadata?.name ||
+    currentUser?.user_metadata?.display_name ||
+    userName ||
+    '';
+
+  const isSaveEnabled = isValid && displayName.trim().length >= 2 && displayName.trim() !== currentDisplayName && !isSaving;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -99,14 +161,21 @@ export default function EditDisplayNameScreen({ navigation }) {
         </View>
 
         {/* Save Button */}
-        <TouchableOpacity 
-          style={[styles.saveButton, !isSaveEnabled && styles.saveButtonDisabled]} 
+        <TouchableOpacity
+          style={[styles.saveButton, (!isSaveEnabled || isSaving) && styles.saveButtonDisabled]}
           onPress={handleSave}
-          disabled={!isSaveEnabled}
+          disabled={!isSaveEnabled || isSaving}
         >
-          <Text style={[styles.saveButtonText, !isSaveEnabled && styles.saveButtonTextDisabled]}>
-            Save
-          </Text>
+          {isSaving ? (
+            <>
+              <ActivityIndicator color="#FDFDFD" style={{ marginRight: 8 }} />
+              <Text style={styles.saveButtonText}>Saving…</Text>
+            </>
+          ) : (
+            <Text style={[styles.saveButtonText, !isSaveEnabled && styles.saveButtonTextDisabled]}>
+              Save
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -205,6 +274,7 @@ const styles = StyleSheet.create({
     height: 56,
     marginHorizontal: 16,
     marginTop: 12,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },

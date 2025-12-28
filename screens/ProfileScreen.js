@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,10 @@ import {
   Alert,
 } from 'react-native';
 import { Svg, Path, G, Defs, ClipPath } from 'react-native-svg';
+import { FontAwesome5, FontAwesome6 } from '@expo/vector-icons';
 import { usePersonalization } from '../components/PersonalizationProvider';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
+import { supabase } from '../utils/supabase';
 
 // Back arrow icon for header
 const BackArrowIcon = () => (
@@ -189,25 +192,68 @@ const ProfileIcon = () => (
   </Svg>
 );
 
-// Profile card component
-const ProfileCard = ({ icon, title, subtitle, onPress }) => (
-  <TouchableOpacity style={styles.profileCard} onPress={onPress}>
-    <View style={styles.cardIconContainer}>
-      {icon}
-    </View>
-    <View style={styles.cardContent}>
-      <Text style={styles.cardTitle}>{title}</Text>
-      <Text style={styles.cardSubtitle}>{subtitle}</Text>
-    </View>
-    <RightArrowIcon />
-  </TouchableOpacity>
-);
+// Helper function to get initials from name or email
+const getInitials = (name, email) => {
+  if (name) {
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  }
+  if (email) {
+    return email.substring(0, 2).toUpperCase();
+  }
+  return 'AA';
+};
 
 export default function ProfileScreen({ navigation }) {
   const { isLoggedIn, userEmail, userName } = usePersonalization();
+  const isFocused = useIsFocused();
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // Fetch current user from Supabase when screen mounts or regains focus
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        if (error) {
+          console.warn('[Profile] getUser error:', error);
+          setCurrentUser(null);
+        } else {
+          setCurrentUser(data?.user ?? null);
+        }
+      } catch (err) {
+        console.error('[Profile] Unexpected getUser error:', err);
+        setCurrentUser(null);
+      }
+    };
+
+    if (isFocused) {
+      fetchUser();
+    }
+  }, [isFocused]);
+
+  // Derive display values
+  const user = currentUser;
+  const displayName =
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
+    user?.user_metadata?.display_name ||
+    user?.email ||
+    userName ||
+    'Not signed in';
+  const displayEmail = user?.email || userEmail || 'No email available';
+  const isLoggedInSupabase = !!user;
+
+  // Get subscription plan
+  const plan = user?.app_metadata?.plan || user?.app_metadata?.subscription || null;
+  const planLabel = plan ? (plan === 'premium' || plan === 'pro' ? 'Premium' : plan) : (user ? 'Free plan' : 'Not subscribed');
 
   const handleBackPress = () => {
-    navigation.goBack();
+    if (navigation && navigation.canGoBack()) {
+      navigation.goBack();
+    }
   };
 
   const handleAccountPress = () => {
@@ -215,7 +261,6 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const handleNappinDataPress = () => {
-    console.log('Nappin AI Data pressed');
     navigation.navigate('NappinAiData');
   };
 
@@ -228,42 +273,76 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const handleAppPreferencesPress = () => {
-    console.log('App Preferences pressed');
     navigation.navigate('AppPreferences');
   };
 
   const handleDataLegalPress = () => {
-    console.log('Data & Legal pressed');
     navigation.navigate('DataAndLegal');
   };
 
-  const handleFeedbackPress = () => {
-    const email = 'nappinapplication@gmail.com';
-    const subject = 'Nappin App Feedback';
-    const body = 'Hi Nappin Team,\n\nI have some feedback/recommendations for the app:\n\n';
+  const handleInviteFriends = () => {
+    Alert.alert(
+      'Coming soon',
+      'Invites are not available yet, but will be added in a future update.'
+    );
+  };
 
-    const mailto = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const handleOpenInstagram = () => {
+    Linking.openURL('https://www.instagram.com/usenappin/').catch(() => {
+      Alert.alert('Error', 'Could not open Instagram');
+    });
+  };
 
-    Linking.canOpenURL(mailto)
-      .then((supported) => {
-        if (supported) {
-          Linking.openURL(mailto);
-        } else {
-          Alert.alert(
-            'Email Not Available',
-            'Please send your feedback to nappinapplication@gmail.com',
-            [{ text: 'OK' }]
-          );
-        }
-      })
-      .catch((error) => {
-        console.error('Error opening email:', error);
-        Alert.alert(
-          'Email Not Available',
-          'Please send your feedback to nappinapplication@gmail.com',
-          [{ text: 'OK' }]
-        );
-      });
+  const handleOpenTikTok = () => {
+    Linking.openURL('https://www.tiktok.com/@usenappin').catch(() => {
+      Alert.alert('Error', 'Could not open TikTok');
+    });
+  };
+
+  const handleOpenX = () => {
+    Linking.openURL('https://x.com/usenappin').catch(() => {
+      Alert.alert('Error', 'Could not open X');
+    });
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Log out?',
+      'Are you sure you want to log out of Nappin?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Log out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { error } = await supabase.auth.signOut();
+              if (error) {
+                console.error('[Profile] signOut error:', error);
+                Alert.alert('Error', 'There was a problem logging out. Please try again.');
+                return;
+              }
+              setCurrentUser(null);
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Splash' }],
+              });
+            } catch (err) {
+              console.error('[Profile] Unexpected logout error:', err);
+              Alert.alert('Error', 'There was a problem logging out. Please try again.');
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Coming soon',
+      'Account deletion will be available in a future update.'
+    );
   };
 
   const handleHomePress = () => {
@@ -278,9 +357,47 @@ export default function ProfileScreen({ navigation }) {
     navigation.navigate('Features');
   };
 
+  // Render helper for simple card rows
+  const renderSimpleRow = (title, subtitle, onPress, icon) => (
+    <TouchableOpacity style={styles.cardRow} onPress={onPress}>
+      {icon && <View style={styles.cardIconContainer}>{icon}</View>}
+      <View style={styles.cardContent}>
+        <Text style={styles.cardTitle}>{title}</Text>
+        <Text style={styles.cardSubtitle}>{subtitle}</Text>
+      </View>
+      <RightArrowIcon />
+    </TouchableOpacity>
+  );
+
+  // Render helper for link rows (social media)
+  const renderLinkRow = (title, onPress, icon) => (
+    <TouchableOpacity style={styles.cardRow} onPress={onPress}>
+      {icon && <View style={styles.cardIconContainer}>{icon}</View>}
+      <View style={styles.cardContent}>
+        <Text style={styles.cardTitle}>{title}</Text>
+      </View>
+      <RightArrowIcon />
+    </TouchableOpacity>
+  );
+
+  // Render helper for destructive rows
+  const renderDestructiveRow = (title, onPress) => (
+    <TouchableOpacity style={styles.cardRow} onPress={onPress}>
+      <View style={styles.cardContent}>
+        <Text style={styles.destructiveText}>{title}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const initials = getInitials(displayName, displayEmail);
+
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
@@ -289,57 +406,77 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.headerTitle}>Profile</Text>
         </View>
 
-        {/* Profile Cards */}
-        <View style={styles.cardsContainer}>
-          <ProfileCard
-            icon={<AccountIcon />}
-            title="Account"
-            subtitle={isLoggedIn ? userEmail : "Tap to sign up or log in"}
-            onPress={handleAccountPress}
-          />
+        {/* Profile Header Card */}
+        <TouchableOpacity
+          style={styles.profileHeaderCard}
+          onPress={handleAccountPress}
+          activeOpacity={0.8}
+        >
+          <View style={styles.profileHeaderContent}>
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarInitials}>{initials}</Text>
+            </View>
+            <View style={styles.profileHeaderText}>
+              <Text style={styles.profileName}>{displayName}</Text>
+              <Text style={styles.profileHandle}>{displayEmail}</Text>
+              <View style={styles.planPill}>
+                <Text style={styles.planPillText}>{planLabel}</Text>
+              </View>
+            </View>
+          </View>
+          <RightArrowIcon />
+        </TouchableOpacity>
 
-          <ProfileCard
-            icon={<DatabaseIcon />}
-            title="Nappin AI Data"
-            subtitle="Edit your advanced data"
-            onPress={handleNappinDataPress}
-          />
-
-          <ProfileCard
-            icon={<NotificationsIcon />}
-            title="Notifications"
-            subtitle="2 of 3 reminders on"
-            onPress={handleNotificationsPress}
-          />
-
-          <ProfileCard
-            icon={<IntegrationsIcon />}
-            title="Integrations"
-            subtitle="Manage devices • Apple Health connected"
-            onPress={handleIntegrationsPress}
-          />
-
-          <ProfileCard
-            icon={<SettingsIcon />}
-            title="App Preferences"
-            subtitle="Sound hints • Haptics"
-            onPress={handleAppPreferencesPress}
-          />
-
-          <ProfileCard
-            icon={<DocumentIcon />}
-            title="Data & Legal"
-            subtitle="Privacy • Terms • Export"
-            onPress={handleDataLegalPress}
-          />
+        {/* Invite Friends Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Invite Friends</Text>
+          <TouchableOpacity style={styles.cardRow} onPress={handleInviteFriends}>
+            <View style={styles.cardContent}>
+              <Text style={styles.cardTitle}>Invite a friend and earn rewards</Text>
+              <Text style={styles.cardSubtitle}>
+                Coming soon – share your Nappin link.
+              </Text>
+            </View>
+            <RightArrowIcon />
+          </TouchableOpacity>
         </View>
 
-        {/* Feedback Link */}
-        <TouchableOpacity onPress={handleFeedbackPress}>
-          <Text style={styles.feedbackLink}>
-            Send us recommendations, bugs, and features you'd like to see added here!
-          </Text>
-        </TouchableOpacity>
+        {/* Account Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account</Text>
+          {renderSimpleRow('Nappin AI Data', 'Edit your advanced data', handleNappinDataPress, <DatabaseIcon />)}
+          {renderSimpleRow('Notifications', 'Reminders & alerts', handleNotificationsPress, <NotificationsIcon />)}
+          {renderSimpleRow('Integrations', 'Manage devices • Apple Health', handleIntegrationsPress, <IntegrationsIcon />)}
+          {renderSimpleRow('App Preferences', 'Sound hints • Haptics', handleAppPreferencesPress, <SettingsIcon />)}
+          {renderSimpleRow('Data & Legal', 'Privacy, Terms, Export', handleDataLegalPress, <DocumentIcon />)}
+        </View>
+
+        {/* Follow Us Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Follow Us</Text>
+          {renderLinkRow(
+            'Instagram',
+            handleOpenInstagram,
+            <FontAwesome5 name="instagram" size={18} color="#1E2A38" />
+          )}
+          {renderLinkRow(
+            'TikTok',
+            handleOpenTikTok,
+            <FontAwesome6 name="tiktok" size={18} color="#1E2A38" />
+          )}
+          {renderLinkRow(
+            'X',
+            handleOpenX,
+            <FontAwesome6 name="x-twitter" size={18} color="#1E2A38" />
+          )}
+        </View>
+
+        {/* Account Actions Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account Actions</Text>
+          {renderDestructiveRow('Logout', handleLogout)}
+          {renderDestructiveRow('Delete Account', handleDeleteAccount)}
+        </View>
       </ScrollView>
 
       {/* Bottom Navigation */}
@@ -406,11 +543,88 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 28,
   },
-  cardsContainer: {
+  // Profile Header
+  profileHeaderCard: {
+    backgroundColor: '#E5E8EC',
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 12,
-    gap: 12,
+    paddingVertical: 20,
+    marginHorizontal: 16,
+    marginTop: 12,
   },
+  profileHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 16,
+  },
+  avatarCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#B7AFC5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInitials: {
+    color: '#FDFDFD',
+    fontFamily: 'Inter',
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  profileHeaderText: {
+    flex: 1,
+  },
+  profileName: {
+    color: '#1E2A38',
+    fontFamily: 'Inter',
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 24,
+    marginBottom: 4,
+  },
+  profileHandle: {
+    color: '#1E2A38',
+    fontFamily: 'Inter',
+    fontSize: 14,
+    fontWeight: '400',
+    lineHeight: 20,
+    opacity: 0.7,
+    marginBottom: 8,
+  },
+  planPill: {
+    backgroundColor: '#B7AFC5',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+  },
+  planPillText: {
+    color: '#FDFDFD',
+    fontFamily: 'Inter',
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 16,
+  },
+  // Sections
+  section: {
+    marginTop: 24,
+    paddingHorizontal: 16,
+  },
+  sectionTitle: {
+    color: 'rgba(253, 253, 253, 0.60)',
+    fontFamily: 'Inter',
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  // Cards
   profileCard: {
     backgroundColor: '#E5E8EC',
     borderRadius: 12,
@@ -418,6 +632,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  cardRow: {
+    backgroundColor: '#E5E8EC',
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -455,18 +687,14 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: 2,
   },
-  feedbackLink: {
-    color: '#B7AFC5',
+  destructiveText: {
+    color: '#FF3B30',
     fontFamily: 'Inter',
-    fontSize: 14,
-    fontWeight: '600',
-    lineHeight: 20,
-    textAlign: 'center',
-    textDecorationLine: 'underline',
-    paddingHorizontal: 16,
-    marginTop: 40,
-    marginBottom: 20,
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 24,
   },
+  // Bottom Navigation
   bottomNavigation: {
     backgroundColor: '#1E2A38',
     borderTopWidth: 1,

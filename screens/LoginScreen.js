@@ -7,28 +7,13 @@ import {
   SafeAreaView,
   TextInput,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Svg, Path, G, Defs, ClipPath } from 'react-native-svg';
-
-// TODO: Import Supabase client when ready
-// import { supabase } from '../lib/supabase';
-
-// Supabase Auth Configuration
-const SUPABASE_CONFIG = {
-  // TODO: Add your Supabase URL and anon key
-  url: 'YOUR_SUPABASE_URL',
-  anonKey: 'YOUR_SUPABASE_ANON_KEY',
-  // Apple Sign In configuration
-  apple: {
-    redirectTo: 'your-app://auth/callback',
-    scopes: ['email', 'name'],
-  },
-  // Google Sign In configuration  
-  google: {
-    redirectTo: 'your-app://auth/callback',
-    scopes: ['email', 'profile'],
-  },
-};
+import { signInWithEmail } from '../services/authService';
+import { signInWithAppleOAuth, signInWithGoogleOAuth, showOAuthError } from '../services/oauth';
+import { navigationRef } from '../navigationRef';
 
 const BackArrowIcon = () => (
   <Svg width={21} height={18} viewBox="0 0 21 18" fill="none">
@@ -67,146 +52,109 @@ const GoogleIcon = () => (
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isAppleLoading, setIsAppleLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const handleBack = () => {
     if (navigation) {
-      navigation.goBack();
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        // Fallback: send them to the first screen if there's no history
+        navigation.navigate('Splash');
+      }
     }
   };
 
-  const handleContinueWithApple = async () => {
-    console.log('Continue with Apple');
-    
-    // TODO: Implement Apple Sign In with Supabase
-    try {
-      // Example Supabase Apple Auth implementation:
-      // const { data, error } = await supabase.auth.signInWithOAuth({
-      //   provider: 'apple',
-      //   options: {
-      //     redirectTo: SUPABASE_CONFIG.apple.redirectTo,
-      //     scopes: SUPABASE_CONFIG.apple.scopes.join(' '),
-      //   },
-      // });
-      
-      // if (error) throw error;
-      // if (data?.user) {
-      //   console.log('Apple sign in successful:', data.user);
-      //   // Navigate to main app or next screen
-      //   // navigation.navigate('Home');
-      // }
-      
-    } catch (error) {
-      console.error('Apple Sign In Error:', error);
-      // TODO: Show error message to user
+  const handleLoginSuccess = (session, user) => {
+    if (!session || !user) {
+      return;
     }
-  };
 
-  const handleContinueWithGoogle = async () => {
-    console.log('Continue with Google');
-    
-    // TODO: Implement Google Sign In with Supabase
-    try {
-      // Example Supabase Google Auth implementation:
-      // const { data, error } = await supabase.auth.signInWithOAuth({
-      //   provider: 'google',
-      //   options: {
-      //     redirectTo: SUPABASE_CONFIG.google.redirectTo,
-      //     scopes: SUPABASE_CONFIG.google.scopes.join(' '),
-      //   },
-      // });
-      
-      // if (error) throw error;
-      // if (data?.user) {
-      //   console.log('Google sign in successful:', data.user);
-      //   // Navigate to main app or next screen
-      //   // navigation.navigate('Home');
-      // }
-      
-    } catch (error) {
-      console.error('Google Sign In Error:', error);
-      // TODO: Show error message to user
-    }
+    console.log('[Login] Session established. User:', user.id);
+
+    // Navigation is handled by root App component based on auth state and entitlements
+    // EntitlementsProvider will automatically refresh on SIGNED_IN event
+    // Root navigation will switch to appropriate stack based on entitlements.locked
+    // No direct navigation.reset needed here - let state-driven navigation handle it
   };
 
   const handleLogin = async () => {
-    console.log('Log In', { email, password });
-    
-    // Basic validation
+    if (isSubmitting) return;
+    setErrorMessage('');
+
     if (!email || !password) {
-      console.error('Email and password are required');
-      // TODO: Show validation error to user
+      setErrorMessage('Please enter your email and password.');
       return;
     }
-    
-    // TODO: Implement Supabase login authentication
+
     try {
-      // Example Supabase sign in implementation:
-      // const { data, error } = await supabase.auth.signInWithPassword({
-      //   email: email.trim().toLowerCase(),
-      //   password: password,
-      // });
-      
-      // if (error) throw error;
-      // if (data?.user) {
-      //   console.log('Login successful:', data.user);
-      //   // Navigate to main app or home screen
-      //   // navigation.navigate('Home');
-      // }
-      
-      // Temporary: For now, simulate successful login and navigate to home (for returning users)
-      console.log('Login successful (simulated)');
-      if (navigation) {
-        navigation.navigate('Home');
+      setIsSubmitting(true);
+      const { data, error } = await signInWithEmail(email, password);
+
+      if (error) {
+        console.error('[Auth] Sign in error', error);
+        setErrorMessage(error.message ?? 'Could not log in. Please try again.');
+        return;
       }
-      
-    } catch (error) {
-      console.error('Login Error:', error);
-      // TODO: Show error message to user based on error type
-      // if (error.message.includes('Invalid login credentials')) {
-      //   // Show "invalid email/password" error
-      // } else if (error.message.includes('Email not confirmed')) {
-      //   // Show "email not verified" error and option to resend
-      // } else {
-      //   // Show generic error
-      // }
+
+      // On success, navigate using the shared helper
+      handleLoginSuccess(data?.session, data?.user);
+    } catch (err) {
+      console.error('[Login] Unexpected error:', err);
+      setErrorMessage(err?.message || 'Unexpected error. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleForgotPassword = async () => {
-    console.log('Forgot password');
-    
-    // TODO: Implement Supabase password reset
+  const handleApplePress = async () => {
     try {
-      // Example Supabase password reset implementation:
-      // if (!email) {
-      //   console.error('Please enter your email first');
-      //   // TODO: Show validation error to user
-      //   return;
-      // }
-      
-      // const { error } = await supabase.auth.resetPasswordForEmail(
-      //   email.trim().toLowerCase(),
-      //   {
-      //     redirectTo: 'your-app://reset-password',
-      //   }
-      // );
-      
-      // if (error) throw error;
-      // console.log('Password reset email sent');
-      // TODO: Show success message to user
-      
-    } catch (error) {
-      console.error('Password Reset Error:', error);
-      // TODO: Show error message to user
+      if (isAppleLoading) return;
+      setIsAppleLoading(true);
+      setErrorMessage('');
+      const { session, user, cancelled } = await signInWithAppleOAuth();
+      if (cancelled) {
+        return;
+      }
+      console.log('[Login] Apple OAuth complete. User:', user?.id);
+      handleLoginSuccess(session, user);
+    } catch (e) {
+      console.error('[Login] Apple OAuth error:', e);
+      showOAuthError();
+    } finally {
+      setIsAppleLoading(false);
     }
-    
-    // TODO: Navigate to forgot password screen for more complex flow
-    // navigation.navigate('ForgotPassword');
   };
 
-  const toggleShowPassword = () => {
-    setShowPassword(!showPassword);
+  const handleGooglePress = async () => {
+    try {
+      if (isGoogleLoading) return;
+      setIsGoogleLoading(true);
+      setErrorMessage('');
+      const { session, user, cancelled } = await signInWithGoogleOAuth();
+      if (cancelled) {
+        return;
+      }
+      console.log('[Login] Google OAuth complete. User:', user?.id);
+      handleLoginSuccess(session, user);
+    } catch (e) {
+      console.error('[Login] Google OAuth error:', e);
+      showOAuthError();
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
+  const handleForgotPassword = () => {
+    navigation.navigate('ForgotPassword');
+  };
+
+  const togglePasswordVisibility = () => {
+    setIsPasswordVisible((prev) => !prev);
   };
 
   return (
@@ -228,12 +176,20 @@ export default function LoginScreen({ navigation }) {
 
           {/* Social Login Buttons */}
           <View style={styles.socialButtonsContainer}>
-            <TouchableOpacity style={styles.appleButton} onPress={handleContinueWithApple}>
+            <TouchableOpacity 
+              style={styles.appleButton}
+              onPress={handleApplePress}
+              disabled={isAppleLoading}
+            >
               <AppleIcon />
               <Text style={styles.appleButtonText}>Continue with Apple</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.googleButton} onPress={handleContinueWithGoogle}>
+            <TouchableOpacity 
+              style={styles.googleButton}
+              onPress={handleGooglePress}
+              disabled={isGoogleLoading}
+            >
               <GoogleIcon />
               <Text style={styles.googleButtonText}>Continue with Google</Text>
             </TouchableOpacity>
@@ -273,15 +229,24 @@ export default function LoginScreen({ navigation }) {
                   onChangeText={setPassword}
                   placeholder=""
                   placeholderTextColor="rgba(30, 42, 56, 0.6)"
-                  secureTextEntry={!showPassword}
+                  secureTextEntry={!isPasswordVisible}
                   autoCapitalize="none"
                   autoCorrect={false}
                 />
-                <TouchableOpacity style={styles.showButton} onPress={toggleShowPassword}>
-                  <Text style={styles.showButtonText}>Show</Text>
+                <TouchableOpacity style={styles.showButton} onPress={togglePasswordVisibility}>
+                  <Text style={styles.showButtonText}>
+                    {isPasswordVisible ? 'Hide' : 'Show'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
+
+            {/* Error Message */}
+            {errorMessage ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{errorMessage}</Text>
+              </View>
+            ) : null}
 
             {/* Forgot Password Link */}
             <View style={styles.forgotPasswordContainer}>
@@ -291,8 +256,22 @@ export default function LoginScreen({ navigation }) {
             </View>
 
             {/* Login Button */}
-            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-              <Text style={styles.loginButtonText}>Log In</Text>
+            <TouchableOpacity 
+              style={[
+                styles.loginButton,
+                isSubmitting && { opacity: 0.5 },
+              ]}
+              onPress={handleLogin}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <ActivityIndicator color="#FDFDFD" style={{ marginRight: 8 }} />
+                  <Text style={styles.loginButtonText}>Logging in...</Text>
+                </>
+              ) : (
+                <Text style={styles.loginButtonText}>Log In</Text>
+              )}
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -539,5 +518,23 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.25)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  errorContainer: {
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 59, 48, 0.3)',
+  },
+  errorText: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#FF3B30',
+    fontFamily: 'Inter',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

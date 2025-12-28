@@ -222,27 +222,34 @@ export default function DailyScheduleScreen({ navigation }) {
     setShowTimePickerModal(false);
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (selectedOptions.length > 0) {
-      // Map schedule IDs to simplified schedule names for easier matching
-      const scheduleNames = selectedOptions.map(id => {
-        const schedule = scheduleOptions.find(option => option.id === id);
-        // Simplify schedule names for better algorithm matching
-        if (schedule?.title.toLowerCase().includes('9') && schedule?.title.toLowerCase().includes('5')) return '9to5';
-        if (schedule?.title.toLowerCase().includes('traditional')) return 'traditional';
-        if (schedule?.title.toLowerCase().includes('night') && schedule?.title.toLowerCase().includes('shift')) return 'night_shift';
-        if (schedule?.title.toLowerCase().includes('flexible')) return 'flexible';
-        if (schedule?.title.toLowerCase().includes('student')) return 'student';
-        if (schedule?.title.toLowerCase().includes('other') || schedule?.title.toLowerCase().includes('not working')) return 'other_not_working';
-        return schedule?.title.toLowerCase().replace(/[\s&-]+/g, '_');
-      });
+      try {
+        // Map schedule IDs to simplified schedule names for easier matching
+        const scheduleNames = selectedOptions.map(id => {
+          const schedule = scheduleOptions.find(option => option.id === id);
+          // Simplify schedule names for better algorithm matching
+          if (schedule?.title.toLowerCase().includes('9') && schedule?.title.toLowerCase().includes('5')) return '9to5';
+          if (schedule?.title.toLowerCase().includes('traditional')) return 'traditional';
+          if (schedule?.title.toLowerCase().includes('night') && schedule?.title.toLowerCase().includes('shift')) return 'night_shift';
+          if (schedule?.title.toLowerCase().includes('flexible')) return 'flexible';
+          if (schedule?.title.toLowerCase().includes('student')) return 'student';
+          if (schedule?.title.toLowerCase().includes('other') || schedule?.title.toLowerCase().includes('not working')) return 'other_not_working';
+          return schedule?.title.toLowerCase().replace(/[\s&-]+/g, '_');
+        });
 
-      // Save all selected schedules, with first as primary
-      const primarySchedule = scheduleNames[0];
-      userPersonalization.setDailySchedule(scheduleNames); // Save array instead of single value
-      console.log('Daily schedules saved:', scheduleNames, 'Primary:', primarySchedule);
+        // Save all selected schedules, with first as primary
+        const primarySchedule = scheduleNames[0];
+        userPersonalization.setDailySchedule(scheduleNames); // Save array instead of single value
+        console.log('Daily schedules saved:', scheduleNames, 'Primary:', primarySchedule);
 
-      navigation.navigate('OnboardingAccountEntry');
+        // Navigate to next screen after calculation completes
+        navigation.navigate('OnboardingAccountEntry');
+      } catch (err) {
+        console.error('[DailySchedule] Failed to set schedule:', err);
+        // Still navigate even if calculation fails to prevent blocking user
+        navigation.navigate('OnboardingAccountEntry');
+      }
     }
   };
 

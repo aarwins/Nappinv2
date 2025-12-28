@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,9 @@ import {
   Alert,
 } from 'react-native';
 import { Svg, Path, G, Defs, ClipPath } from 'react-native-svg';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { usePersonalization } from '../components/PersonalizationProvider';
+import { supabase } from '../utils/supabase';
 
 // Back arrow icon for header
 const BackArrowIcon = () => (
@@ -146,8 +148,39 @@ const ProfileIcon = () => (
   </Svg>
 );
 
-export default function AccountScreen({ navigation }) {
+export default function AccountScreen({ navigation: navigationProp }) {
   const { isLoggedIn, userEmail, userName, logout, login } = usePersonalization();
+  const navigation = useNavigation();
+  const isFocused = useIsFocused();
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+
+  // Fetch current user from Supabase when screen mounts or regains focus
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        setLoadingUser(true);
+        const { data, error } = await supabase.auth.getUser();
+
+        if (error) {
+          console.warn('[Account] getUser error:', error);
+          setCurrentUser(null);
+        } else {
+          setCurrentUser(data?.user ?? null);
+          console.log('[Account] User loaded:', data?.user?.id);
+        }
+      } catch (err) {
+        console.error('[Account] Unexpected getUser error:', err);
+        setCurrentUser(null);
+      } finally {
+        setLoadingUser(false);
+      }
+    };
+
+    if (isFocused) {
+      fetchUser();
+    }
+  }, [isFocused]);
 
   const handleBackPress = () => {
     navigation.navigate('Profile');
@@ -167,23 +200,39 @@ export default function AccountScreen({ navigation }) {
     navigation.navigate('ChangePassword');
   };
 
-  const handleSignOutPress = async () => {
-    console.log('Sign Out pressed');
-    
+
+  const handleLogout = () => {
+    if (!currentUser) {
+      return;
+    }
+
     Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
+      'Log out?',
+      'Are you sure you want to log out of Nappin?',
       [
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Sign Out',
+          text: 'Log out',
           style: 'destructive',
           onPress: async () => {
-            await logout();
-            navigation.navigate('Profile');
+            try {
+              console.log('[Account] Logging out user:', currentUser.id);
+              const { error } = await supabase.auth.signOut();
+
+              if (error) {
+                console.error('[Account] signOut error:', error);
+                Alert.alert('Error', 'There was a problem logging out. Please try again.');
+                return;
+              }
+
+              setCurrentUser(null);
+
+              // Navigate to Log In screen
+              navigation.navigate('Login');
+            } catch (err) {
+              console.error('[Account] Unexpected logout error:', err);
+              Alert.alert('Error', 'There was a problem logging out. Please try again.');
+            }
           },
         },
       ],
@@ -230,8 +279,19 @@ export default function AccountScreen({ navigation }) {
 
         {/* User Profile Card */}
         <View style={styles.userProfileCard}>
-          <Text style={styles.userName}>{userName || (isLoggedIn ? 'No name set' : 'Not signed in')}</Text>
-          <Text style={styles.userEmail}>{userEmail || (isLoggedIn ? 'No email set' : 'No email available')}</Text>
+          <Text style={styles.userName}>
+            {currentUser
+              ? currentUser.user_metadata?.full_name ||
+                currentUser.user_metadata?.name ||
+                currentUser.user_metadata?.display_name ||
+                'Signed in'
+              : userName || (isLoggedIn ? 'No name set' : 'Not signed in')}
+          </Text>
+          <Text style={styles.userEmail}>
+            {currentUser
+              ? currentUser.email || 'No email available'
+              : userEmail || (isLoggedIn ? 'No email set' : 'No email available')}
+          </Text>
         </View>
 
         {/* Account Details Card */}
@@ -242,7 +302,14 @@ export default function AccountScreen({ navigation }) {
             <View style={styles.rowContent}>
               <Text style={styles.rowLabel}>Name</Text>
             </View>
-            <Text style={styles.rowValue}>{userName || (isLoggedIn ? 'No name set' : 'Not available')}</Text>
+            <Text style={styles.rowValue}>
+              {currentUser
+                ? currentUser.user_metadata?.full_name ||
+                  currentUser.user_metadata?.name ||
+                  currentUser.user_metadata?.display_name ||
+                  'Not available'
+                : userName || (isLoggedIn ? 'No name set' : 'Not available')}
+            </Text>
             <RightArrowIcon />
           </TouchableOpacity>
 
@@ -255,12 +322,16 @@ export default function AccountScreen({ navigation }) {
             <View style={styles.rowContent}>
               <Text style={styles.rowLabel}>Email</Text>
             </View>
-            <Text style={styles.rowValue}>{userEmail || (isLoggedIn ? 'No email set' : 'Not available')}</Text>
+            <Text style={styles.rowValue}>
+              {currentUser
+                ? currentUser.email || 'Not available'
+                : userEmail || (isLoggedIn ? 'No email set' : 'Not available')}
+            </Text>
           </TouchableOpacity>
         </View>
 
         {/* Settings Card - only show when logged in */}
-        {isLoggedIn && (
+        {(isLoggedIn || currentUser) && (
           <View style={styles.settingsCard}>
             {/* Change Password */}
             <TouchableOpacity style={styles.settingsRow} onPress={handleChangePasswordPress}>
@@ -270,19 +341,11 @@ export default function AccountScreen({ navigation }) {
               </View>
               <RightArrowIcon />
             </TouchableOpacity>
-
-            {/* Sign Out */}
-            <TouchableOpacity style={styles.signOutRow} onPress={handleSignOutPress}>
-              <PowerIcon />
-              <View style={styles.rowContent}>
-                <Text style={styles.signOutLabel}>Sign Out</Text>
-              </View>
-            </TouchableOpacity>
           </View>
         )}
 
         {/* Authentication Buttons - only show when not logged in */}
-        {!isLoggedIn && (
+        {!isLoggedIn && !currentUser && (
           <View style={styles.authButtonsContainer}>
             <TouchableOpacity style={styles.primaryButton} onPress={handleCreateAccountPress}>
               <Text style={styles.primaryButtonText}>Create Account</Text>
@@ -290,6 +353,15 @@ export default function AccountScreen({ navigation }) {
 
             <TouchableOpacity style={styles.secondaryButton} onPress={handleSignInPress}>
               <Text style={styles.secondaryButtonText}>Sign In</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Logout link when signed in */}
+        {(isLoggedIn || currentUser) && (
+          <View style={styles.logoutLinkContainer}>
+            <TouchableOpacity onPress={handleLogout} style={styles.logoutContainer}>
+              <Text style={styles.logoutText}>Log out?</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -557,5 +629,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     lineHeight: 24,
+  },
+  logoutLinkContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    alignItems: 'center',
+  },
+  logoutContainer: {
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  logoutText: {
+    fontSize: 14,
+    color: '#C0B4D8',
+    textDecorationLine: 'underline',
+    fontFamily: 'Inter',
   },
 });

@@ -6,8 +6,16 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { Svg, Path, G, Defs, ClipPath, Circle, Line } from 'react-native-svg';
+import { supabase } from '../utils/supabase';
+import {
+  fetchActiveProducts,
+  getProductBySku,
+  formatPrice,
+  formatMonthlyEquivalent,
+} from '../utils/subscriptions/products';
 
 // Crescent Moon Icon for sounds feature
 const CrescentMoonIcon = () => (
@@ -255,6 +263,23 @@ const BulletPoint = ({ text }) => (
 
 export default function TrialOfferScreen({ navigation }) {
   const [currentFeatureIndex, setCurrentFeatureIndex] = useState(0);
+  const [yearlyProduct, setYearlyProduct] = useState(null);
+
+  // Fetch subscription products from backend on mount
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        const allProducts = await fetchActiveProducts(supabase);
+        // Get advanced yearly product for pricing display
+        const product = getProductBySku(allProducts, 'advanced_yearly');
+        setYearlyProduct(product);
+      } catch (error) {
+        console.error('[TrialOfferScreen] Error loading products:', error);
+      }
+    };
+
+    loadProducts();
+  }, []);
 
   // Rotate feature cards every 4 seconds
   useEffect(() => {
@@ -340,9 +365,15 @@ export default function TrialOfferScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Pricing text */}
+        {/* Pricing text - Loaded from backend */}
         <View style={styles.pricingSection}>
-          <Text style={styles.pricingText}>Then $24.99 per year (≈ $2.08/mo)</Text>
+          {yearlyProduct ? (
+            <Text style={styles.pricingText}>
+              Then {formatPrice(yearlyProduct.price_cents, yearlyProduct.currency)} per year (≈ {formatMonthlyEquivalent(yearlyProduct.price_cents, yearlyProduct.currency)}/mo)
+            </Text>
+          ) : (
+            <Text style={styles.pricingText}>Loading pricing...</Text>
+          )}
         </View>
 
         {/* Bottom divider */}

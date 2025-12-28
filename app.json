@@ -1,12 +1,16 @@
 {
   "expo": {
-    "name": "realnappinapp",
-    "slug": "realnappinapp",
+    "name": "Nappin",
+    "slug": "nappinv2",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "scheme": "nappin",
+    "extra": {
+      "supabaseRedirectUrl": "nappin://auth-callback"
+    },
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -14,8 +18,9 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.realnappinapp",
+      "bundleIdentifier": "com.nappin",
       "infoPlist": {
+        "CFBundleDisplayName": "Nappin",
         "UIBackgroundModes": [
           "audio",
           "background-processing"
@@ -42,7 +47,8 @@
         {
           "backgroundFetchInterval": 1
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "web": {
       "favicon": "./assets/favicon.png"

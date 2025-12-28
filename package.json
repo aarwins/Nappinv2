@@ -6,22 +6,31 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "sync:products": "node scripts/syncSubscriptionProducts.js",
+    "list:products": "node scripts/listSubscriptionProducts.js",
+    "grant:test-sub": "node scripts/grantTestSubscription.js",
+    "revoke:test-sub": "node scripts/revokeTestSubscription.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",
+    "dotenv": "^16.4.5",
     "@react-native-async-storage/async-storage": "^2.1.2",
     "@react-native-community/slider": "^4.5.6",
     "@react-navigation/native": "^7.1.16",
     "@react-navigation/native-stack": "^7.3.23",
     "@supabase/supabase-js": "^2.81.1",
     "expo": "~53.0.20",
+    "expo-auth-session": "~6.2.1",
     "expo-av": "^15.1.7",
     "expo-background-fetch": "^13.1.6",
+    "expo-crypto": "~14.1.5",
     "expo-device": "^7.1.4",
     "expo-keep-awake": "~14.1.4",
+    "expo-linking": "^8.0.8",
     "expo-notifications": "^0.31.4",
     "expo-status-bar": "~2.2.3",
+    "expo-web-browser": "~14.2.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.5",
@@ -33,7 +42,9 @@
     "react-native-web": "^0.20.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.20.0"
+    "@babel/core": "^7.20.0",
+    "@types/react": "~19.0.10",
+    "typescript": "~5.8.3"
   },
   "private": true
 }

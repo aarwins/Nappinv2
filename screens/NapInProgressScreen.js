@@ -945,7 +945,8 @@ export default function NapInProgressScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <View style={styles.contentWrapper}>
+        <View style={styles.content}>
         {/* Back Button */}
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <BackArrowIcon />
@@ -1014,8 +1015,18 @@ export default function NapInProgressScreen({ navigation, route }) {
           </Text>
         </View>
 
-        {/* Tracking/Prediction Messages */}
-        <View style={styles.inputSection}>
+        {/* Ambient Sound Status */}
+        {isAmbientPlaying && (
+          <View style={styles.ambientSoundStatus}>
+            <Text style={styles.ambientSoundText}>
+              🎵 {selectedAmbientSound} playing
+            </Text>
+          </View>
+        )}
+
+        {/* Buttons Container - wraps Smart sensors card and Cancel button */}
+        <View style={styles.buttonsContainer}>
+          {/* Smart sensors card (messageCard) */}
           <View style={styles.messageCard}>
             <Animated.Text
               style={[
@@ -1026,19 +1037,9 @@ export default function NapInProgressScreen({ navigation, route }) {
               {getCurrentSentences()[currentSentenceIndex]}
             </Animated.Text>
           </View>
-        </View>
 
-        {/* Ambient Sound Status */}
-        {isAmbientPlaying && (
-          <View style={styles.ambientSoundStatus}>
-            <Text style={styles.ambientSoundText}>
-              🎵 {selectedAmbientSound} playing
-            </Text>
-          </View>
-        )}
-
-        {/* End Nap Button Section or Alarm Controls */}
-        <View style={styles.buttonSection}>
+          {/* End Nap Button Section or Alarm Controls */}
+          <View style={styles.buttonSection}>
           {currentPhase === 'alarm' ? (
             <View style={styles.alarmControls}>
               <TouchableOpacity
@@ -1070,9 +1071,9 @@ export default function NapInProgressScreen({ navigation, route }) {
               </Text>
             </TouchableOpacity>
           )}
+          </View>
         </View>
-
-
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -1083,10 +1084,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1E2A38',
   },
-  content: {
+  contentWrapper: {
     flex: 1,
-    width: 390,
+    width: '100%',
+    alignItems: 'center', // ✅ center the content container horizontally
+    justifyContent: 'flex-start',
+  },
+  content: {
+    width: '100%',
+    maxWidth: 390,
     height: 844,
+    position: 'relative',
+    alignItems: 'center', // ✅ center children horizontally
   },
   backButton: {
     position: 'absolute',
@@ -1097,7 +1106,8 @@ const styles = StyleSheet.create({
     height: 24,
   },
   header: {
-    width: 390,
+    width: '100%',
+    maxWidth: 390,
     height: 130,
     position: 'absolute',
     left: 0,
@@ -1115,7 +1125,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     lineHeight: 20,
     position: 'absolute',
-    left: 95,
+    left: '50%',
+    marginLeft: -100, // Half of width to center
     top: 45,
   },
   timer: {
@@ -1128,11 +1139,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 50,
     position: 'absolute',
-    left: 70, // Adjusted left position to center the wider text
+    left: '50%',
+    marginLeft: -125, // Half of width to center
     top: 62,
   },
   progressSection: {
-    width: 390,
+    width: '100%',
+    maxWidth: 390,
     height: 260,
     paddingHorizontal: 65,
     justifyContent: 'center',
@@ -1146,9 +1159,11 @@ const styles = StyleSheet.create({
     height: 260,
     justifyContent: 'center',
     alignItems: 'center',
+    alignSelf: 'center', // ✅ keep circle centered
   },
   messageSection: {
-    width: 390,
+    width: '100%',
+    maxWidth: 390,
     height: 70,
     position: 'absolute',
     left: 0,
@@ -1166,7 +1181,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 26,
     position: 'absolute',
-    left: 98,
+    left: '50%',
+    marginLeft: -95, // Half of width to center
     top: -3,
   },
   subMessage: {
@@ -1178,22 +1194,14 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     lineHeight: 20,
     position: 'absolute',
-    left: 45,
+    left: '50%',
+    marginLeft: -150, // Half of width to center
     top: 29,
     flexWrap: 'wrap',
   },
-  inputSection: {
-    width: 390,
-    height: 80,
-    paddingHorizontal: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'absolute',
-    left: 0,
-    top: 523,
-  },
   messageCard: {
-    width: 358,
+    width: '100%',
+    maxWidth: 358,
     height: 80,
     paddingHorizontal: 16,
     paddingVertical: 16,
@@ -1201,6 +1209,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E8EC',
     justifyContent: 'center',
     alignItems: 'center',
+    alignSelf: 'center', // ✅ center the card
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -1219,25 +1228,34 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     flexWrap: 'wrap',
   },
-  buttonSection: {
-    width: 390,
+  buttonsContainer: {
+    width: '100%',
+    maxWidth: 390,
     paddingHorizontal: 16,
+    gap: 16,
+    position: 'absolute',
+    left: 0,
+    top: 523,
+    alignItems: 'center', // ✅ center horizontally
+  },
+  buttonSection: {
+    width: '100%',
+    maxWidth: 358,
     paddingBottom: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    position: 'absolute',
-    left: 0,
-    top: 626,
     height: 117,
   },
   endNapButton: {
-    width: 358,
+    width: '100%',
+    maxWidth: 358,
     height: 64,
     paddingHorizontal: 125,
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 12,
     backgroundColor: '#B7AFC5',
+    alignSelf: 'center', // ✅ center the button
     shadowColor: 'rgba(183, 175, 197, 0.35)',
     shadowOffset: {
       width: 0,
